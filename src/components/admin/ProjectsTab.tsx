@@ -282,9 +282,9 @@ export default function ProjectsTab() {
             }
 
             setCurrentProject(prev => ({ ...prev, images: newImages }));
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error uploading image:', error);
-            alert('Image upload failed');
+            alert(`Image upload failed: ${error.message || 'Unknown error'}`);
         } finally {
             setUploading(false);
         }

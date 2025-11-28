@@ -175,9 +175,6 @@ export default function Projects() {
         }
     };
 
-    const frontendProjects = projects.filter(p => p.category === '前端開發');
-    const uxProjects = projects.filter(p => p.category === 'UX 設計');
-
     if (loading) return null;
 
     return (
@@ -207,8 +204,8 @@ export default function Projects() {
                                     className={styles.navContent}
                                     ref={(el) => { navContentRefs.current[index] = el; }}
                                 >
-                                    <span className={`${styles.navTag} ${project.category === 'UX 設計' ? styles.tagUx : styles.tagFrontend}`}>
-                                        {project.category === '前端開發' ? '前端' : 'UX'}
+                                    <span className={`${styles.navTag} ${project.category === 'UX' ? styles.tagUx : styles.tagFrontend}`}>
+                                        {project.category === '前端' ? '前端' : 'UX'}
                                     </span>
                                     <span className={styles.navText}>{project.title}</span>
                                 </div>
@@ -225,8 +222,7 @@ export default function Projects() {
             </div>
 
             <div className={styles.container}>
-                {/* Frontend Section */}
-                {frontendProjects.map((project, index) => (
+                {projects.map((project, index) => (
                     <motion.div
                         key={project.id}
                         ref={(el) => { projectRefs.current[index] = el; }}
@@ -244,65 +240,21 @@ export default function Projects() {
                             </div>
                             <h3 className={styles.projectTitle}>
                                 {project.title}
-                                <span className={`${styles.projectTag} ${project.category === 'UX 設計' ? styles.tagUx : styles.tagFrontend}`}>
-                                    {project.category === '前端開發' ? '前端' : 'UX'}
+                                <span className={`${styles.projectTag} ${project.category === 'UX' ? styles.tagUx : styles.tagFrontend}`}>
+                                    {project.category === '前端' ? '前端' : 'UX'}
                                 </span>
                             </h3>
                             <p className={styles.projectDesc}>{project.description}</p>
                             <div className={styles.tags}>
-                                {project.tags.map((tag) => (
+                                {project.tags.map((tag: string) => (
                                     <span key={tag} className={styles.tag}>{tag}</span>
                                 ))}
                             </div>
                             <div className={styles.links}>
-                                <a href={project.demo} className={styles.linkBtn} target="_blank" rel="noopener noreferrer">
+                                <a href={project.demo_url} className={styles.linkBtn} target="_blank" rel="noopener noreferrer">
                                     線上預覽 <ExternalLink size={18} />
                                 </a>
-                                <a href={project.github} className={styles.githubBtn} target="_blank" rel="noopener noreferrer">
-                                    <Github size={20} />
-                                </a>
-                            </div>
-                        </div>
-                    </motion.div>
-                ))}
-
-                {/* UX Section */}
-                <div className={styles.categoryHeader}>
-                    <h2 className={styles.categoryTitle}>UX 設計專案</h2>
-                </div>
-                {uxProjects.map((project, index) => (
-                    <motion.div
-                        key={project.id}
-                        ref={(el) => { projectRefs.current[index + frontendProjects.length] = el; }}
-                        className={`${styles.projectRow} ${index % 2 !== 0 ? styles.projectRowReverse : ''}`}
-                        initial={{ opacity: 0, y: 50 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true, margin: "-100px" }}
-                        transition={{ duration: 0.8 }}
-                    >
-                        <ImageSlider images={project.images} title={project.title} />
-
-                        <div className={styles.infoContainer}>
-                            <div className={styles.projectNumber}>
-                                {(index + 1 + frontendProjects.length).toString().padStart(2, '0')}
-                            </div>
-                            <h3 className={styles.projectTitle}>
-                                {project.title}
-                                <span className={`${styles.projectTag} ${project.category === 'UX 設計' ? styles.tagUx : styles.tagFrontend}`}>
-                                    {project.category === '前端開發' ? '前端' : 'UX'}
-                                </span>
-                            </h3>
-                            <p className={styles.projectDesc}>{project.description}</p>
-                            <div className={styles.tags}>
-                                {project.tags.map((tag) => (
-                                    <span key={tag} className={styles.tag}>{tag}</span>
-                                ))}
-                            </div>
-                            <div className={styles.links}>
-                                <a href={project.demo} className={styles.linkBtn} target="_blank" rel="noopener noreferrer">
-                                    線上預覽 <ExternalLink size={18} />
-                                </a>
-                                <a href={project.github} className={styles.githubBtn} target="_blank" rel="noopener noreferrer">
+                                <a href={project.github_url} className={styles.githubBtn} target="_blank" rel="noopener noreferrer">
                                     <Github size={20} />
                                 </a>
                             </div>
