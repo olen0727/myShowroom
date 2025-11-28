@@ -2,22 +2,41 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Download } from 'lucide-react';
+import { ArrowRight, Download, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
 import styles from './Hero.module.css';
 import ParticleBackground from './ParticleBackground';
 
-const roles = ['前端工程師', 'UX 設計師'];
-
 export default function Hero() {
     const [index, setIndex] = useState(0);
+    const [profile, setProfile] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchProfile = async () => {
+            try {
+                const { data } = await supabase.from('profile').select('*').single();
+                if (data) setProfile(data);
+            } catch (error) {
+                console.error('Error fetching profile:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchProfile();
+    }, []);
+
+    const roles = profile?.hero_roles || ['前端工程師', 'UX 設計師'];
 
     useEffect(() => {
         const timer = setInterval(() => {
             setIndex((prev) => (prev + 1) % roles.length);
         }, 3000);
         return () => clearInterval(timer);
-    }, []);
+    }, [roles.length]);
+
+    if (loading) return null; // Or a loading skeleton
 
     return (
         <section className={styles.hero}>
@@ -36,11 +55,9 @@ export default function Hero() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, ease: "easeOut" }}
                 >
-                    <h1 className={styles.title}>
-                        打造極致的
-                        <br />
-                        數位體驗
-                    </h1>
+                    <h1 className={styles.title} dangerouslySetInnerHTML={{
+                        __html: profile?.hero_title?.replace(/\n/g, '<br />') || '打造極致的<br />數位體驗'
+                    }} />
                 </motion.div>
 
                 <motion.div
@@ -49,7 +66,7 @@ export default function Hero() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
                 >
-                    我是一名
+                    {profile?.hero_subtitle_prefix || '我是一名'}
                     <span style={{
                         display: 'inline-flex',
                         position: 'relative',
@@ -77,7 +94,7 @@ export default function Hero() {
                             </motion.span>
                         </AnimatePresence>
                     </span>
-                    ，熱衷於構建美觀、實用且具擴展性的網頁應用程式，致力於解決真實世界的問題。
+                    {profile?.hero_subtitle_suffix || '，熱衷於構建美觀、實用且具擴展性的網頁應用程式。'}
                 </motion.div>
 
                 <motion.div
@@ -90,10 +107,12 @@ export default function Hero() {
                         查看作品
                         <ArrowRight size={20} style={{ display: 'inline', marginLeft: '8px', verticalAlign: 'middle' }} />
                     </Link>
-                    <Link href="/resume.pdf" className={styles.secondaryBtn} target="_blank">
-                        下載履歷
-                        <Download size={20} style={{ display: 'inline', marginLeft: '8px', verticalAlign: 'middle' }} />
-                    </Link>
+                    {profile?.resume_url && (
+                        <a href={profile.resume_url} className={styles.secondaryBtn} target="_blank" rel="noopener noreferrer">
+                            下載履歷
+                            <Download size={20} style={{ display: 'inline', marginLeft: '8px', verticalAlign: 'middle' }} />
+                        </a>
+                    )}
                 </motion.div>
             </div>
         </section>

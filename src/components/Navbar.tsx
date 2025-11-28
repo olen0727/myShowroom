@@ -7,7 +7,6 @@ import { Menu, X, Code2 } from 'lucide-react';
 import styles from './Navbar.module.css';
 
 const navLinks = [
-    { name: '首頁', href: '/' },
     { name: '關於我', href: '#about' },
     { name: '作品集', href: '#projects' },
     { name: '職涯旅程', href: '#experience' },

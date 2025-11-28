@@ -1,33 +1,63 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Code2, Database, Layout, Terminal } from 'lucide-react';
+import { Code2, Database, Layout, Terminal, Server, Smartphone, Globe, Cpu, Cloud, GitBranch, Box, Layers, Users, CheckCircle, Search } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 import styles from './About.module.css';
 
-const skills = [
-    {
-        icon: <Layout size={24} />,
-        title: '前端開發',
-        items: ['React', 'Next.js', 'TypeScript', 'Tailwind CSS', 'Framer Motion'],
-    },
-    {
-        icon: <Database size={24} />,
-        title: '後端開發',
-        items: ['Node.js', 'Supabase', 'PostgreSQL', 'Express', 'Prisma'],
-    },
-    {
-        icon: <Terminal size={24} />,
-        title: '工具與維運',
-        items: ['Git', 'Docker', 'AWS', 'Vercel', 'CI/CD'],
-    },
-    {
-        icon: <Code2 size={24} />,
-        title: '其他技能',
-        items: ['UI/UX Design', 'Agile', 'Testing', 'SEO'],
-    },
-];
+// Icon Map
+const ICON_MAP: Record<string, any> = {
+    Layout, Database, Terminal, Code2, Server, Smartphone, Globe, Cpu, Cloud, GitBranch, Box, Layers, Users, CheckCircle, Search
+};
+
+const CATEGORY_ORDER = ['前端開發', '後端開發', '工具與維運', '其他技能'];
 
 export default function About() {
+    const [profile, setProfile] = useState<any>(null);
+    const [skills, setSkills] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const [profileRes, skillsRes] = await Promise.all([
+                    supabase.from('profile').select('about_bio').single(),
+                    supabase.from('skills').select('*').order('display_order', { ascending: true })
+                ]);
+
+                if (profileRes.data) setProfile(profileRes.data);
+                if (skillsRes.data) setSkills(skillsRes.data);
+            } catch (error) {
+                console.error('Error fetching about data:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, []);
+
+    // Group skills by category
+    const groupedSkills = CATEGORY_ORDER.map(category => {
+        const categorySkills = skills.filter(s => s.category === category);
+        if (categorySkills.length === 0) return null;
+
+        // Use the icon of the first skill or a default one as the category icon
+        // Ideally, category icons should be defined in a separate config or DB
+        let CategoryIcon = Layout;
+        if (category === '後端開發') CategoryIcon = Database;
+        if (category === '工具與維運') CategoryIcon = Terminal;
+        if (category === '其他技能') CategoryIcon = Code2;
+
+        return {
+            title: category,
+            icon: <CategoryIcon size={24} />,
+            items: categorySkills.map(s => s.name)
+        };
+    }).filter(Boolean);
+
+    if (loading) return null;
+
     return (
         <section id="about" className={styles.section}>
             <div className={styles.background}>
@@ -56,32 +86,28 @@ export default function About() {
                         transition={{ duration: 0.6, delay: 0.2 }}
                     >
                         <h3>我是誰</h3>
-                        <p>
-                            我是一名充滿熱情的全端工程師，注重細節並致力於創造卓越的數位體驗。憑藉著前端與後端的紮實基礎，我專注於構建能解決實際問題的可擴展網頁應用。
-                        </p>
-                        <p>
-                            我的旅程始於對網路運作原理的好奇，這引領我深入程式開發的世界。如今，我運用 Next.js 和 Supabase 等現代技術來構建高效能且使用者友善的應用程式。
-                        </p>
-                        <p>
-                            當我不寫程式時，我喜歡探索新技術、參與開源專案，或與社群分享我的知識。
-                        </p>
+                        <div className="space-y-4 text-neutral-300 leading-relaxed">
+                            {profile?.about_bio?.split('\n').map((paragraph: string, idx: number) => (
+                                paragraph.trim() && <p key={idx}>{paragraph}</p>
+                            ))}
+                        </div>
                     </motion.div>
 
                     <div className={styles.skillsGrid}>
-                        {skills.map((skill, index) => (
+                        {groupedSkills.map((skill: any, index) => (
                             <motion.div
                                 key={skill.title}
                                 className={styles.skillCard}
                                 initial={{ opacity: 0, y: 20 }}
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
-                                transition={{ duration: 0.2, delay: 0 }}
+                                transition={{ duration: 0.2, delay: index * 0.1 }}
                                 whileHover={{ y: -5, borderColor: 'rgba(59, 130, 246, 0.5)' }}
                             >
                                 <div className={styles.skillIcon}>{skill.icon}</div>
                                 <h4 className={styles.skillTitle}>{skill.title}</h4>
                                 <div className={styles.skillList}>
-                                    {skill.items.map((item) => (
+                                    {skill.items.map((item: string) => (
                                         <span key={item} className={styles.skillTag}>{item}</span>
                                     ))}
                                 </div>

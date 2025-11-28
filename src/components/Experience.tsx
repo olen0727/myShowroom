@@ -1,59 +1,43 @@
 'use client';
 
-import { useRef } from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { supabase } from '@/lib/supabase';
 import styles from './Experience.module.css';
 
-const experiences = [
-    {
-        id: 1,
-        role: "資深前端工程師",
-        company: "Tech Giant Co.",
-        period: "2021 - Present",
-        description: "帶領前端團隊進行架構重構，提升網頁效能 40%。導入 Next.js 與 TypeScript，建立共用元件庫，大幅縮短開發週期。",
-        skills: ["React", "Next.js", "TypeScript", "Team Lead"]
-    },
-    {
-        id: 2,
-        role: "前端工程師",
-        company: "Creative Digital Agency",
-        period: "2019 - 2021",
-        description: "負責多個大型品牌官網開發，專注於互動特效與 RWD 切版。與設計師緊密合作，實現高品質的 UI/UX 體驗。",
-        skills: ["Vue.js", "GSAP", "SCSS", "WebGL"]
-    },
-    {
-        id: 3,
-        role: "網頁開發實習生",
-        company: "Start-up Inc.",
-        period: "2018 - 2019",
-        description: "協助開發公司內部管理系統，參與 API 串接與介面優化。在敏捷開發流程中學習現代化前端技術。",
-        skills: ["JavaScript", "HTML/CSS", "Git", "REST API"]
-    },
-    {
-        id: 4,
-        role: "全端工程師",
-        company: "Innovation Labs",
-        period: "2022 - Present",
-        description: "負責開發創新產品的前後端架構，使用微服務架構提升系統可擴展性。帶領跨職能團隊完成多個 MVP 專案。",
-        skills: ["Node.js", "React", "Docker", "AWS", "MongoDB"]
-    }
-];
-
 export default function Experience() {
-    const containerRef = useRef<HTMLDivElement>(null);
-    const { scrollYProgress } = useScroll({
-        target: containerRef,
-        offset: ["start end", "end start"]
-    });
+    const [experiences, setExperiences] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const opacity = useTransform(scrollYProgress, [0, 0.2], [0, 1]);
-    const y = useTransform(scrollYProgress, [0, 0.2], [100, 0]);
+    useEffect(() => {
+        const fetchExperiences = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('experiences')
+                    .select('*')
+                    .order('display_order', { ascending: true });
+
+                if (error) throw error;
+                setExperiences(data || []);
+            } catch (error) {
+                console.error('Error fetching experiences:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchExperiences();
+    }, []);
+
+    if (loading) return null;
 
     return (
-        <section id="experience" className={styles.section} ref={containerRef}>
+        <section id="experience" className={styles.section}>
             <motion.div
                 className={styles.header}
-                style={{ opacity, y }}
+                initial={{ opacity: 0, y: 50 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8 }}
             >
                 <h2 className={styles.title}>職涯旅程</h2>
                 <p className={styles.subtitle}>Professional Journey</p>
@@ -78,7 +62,7 @@ export default function Experience() {
                                     <h4 className={styles.company}>{exp.company}</h4>
                                     <p className={styles.description}>{exp.description}</p>
                                     <div className={styles.skills}>
-                                        {exp.skills.map(skill => (
+                                        {exp.skills?.map((skill: string) => (
                                             <span key={skill} className={styles.skill}>{skill}</span>
                                         ))}
                                     </div>

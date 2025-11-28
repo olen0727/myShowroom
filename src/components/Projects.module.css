@@ -81,7 +81,12 @@
     z-index: 100;
     align-items: flex-end;
     pointer-events: auto;
-    padding: 20px 10px;
+    padding: 10px;
+}
+
+.sidebarNav:hover {
+    background: rgba(10, 10, 10, 0.85);
+    border-radius: 8px;
 }
 
 .navItemWrapper {
@@ -91,7 +96,7 @@
     align-items: center;
     justify-content: flex-end;
     cursor: pointer;
-    padding-left: 20px;
+    /*padding-left: 20px;*/
 }
 
 .navItem {
@@ -117,7 +122,7 @@
 
 .navContent {
     position: absolute;
-    left: 1rem;
+    left: 0rem;
     display: flex;
     align-items: center;
     opacity: 0;
@@ -139,7 +144,7 @@
     border-radius: 5px;
     background: rgba(10, 10, 10, 0.85);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    /*border: 1px solid rgba(255, 255, 255, 0.1);*/
     transform: none;
 }
 

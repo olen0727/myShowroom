@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Send, CheckCircle, Loader2 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 import styles from './Contact.module.css';
 
 export default function Contact() {
@@ -13,11 +14,27 @@ export default function Contact() {
         e.preventDefault();
         setIsSubmitting(true);
 
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        const formData = new FormData(e.target as HTMLFormElement);
+        const data = {
+            name: formData.get('name') as string,
+            email: formData.get('email') as string,
+            content: formData.get('message') as string,
+        };
 
-        setIsSubmitting(false);
-        setIsSuccess(true);
+        try {
+            const { error } = await supabase
+                .from('messages')
+                .insert([data]);
+
+            if (error) throw error;
+
+            setIsSuccess(true);
+        } catch (error) {
+            console.error('Error sending message:', error);
+            alert('發送失敗，請稍後再試。');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -32,8 +49,8 @@ export default function Contact() {
                     viewport={{ once: true }}
                     transition={{ duration: 0.6 }}
                 >
-                    <h2 className={styles.title}>聯絡我</h2>
-                    <p className={styles.subtitle}>有合作的想法嗎？歡迎聊聊。</p>
+                    <h2 className={styles.title}>與我聯繫</h2>
+                    <p className={styles.subtitle}>有合作或任何其他的的想法嗎？歡迎聊聊。</p>
                 </motion.div>
 
                 <motion.div
@@ -66,6 +83,7 @@ export default function Contact() {
                                 <input
                                     type="text"
                                     id="name"
+                                    name="name"
                                     required
                                     className={styles.input}
                                     placeholder="王小明"
@@ -77,6 +95,7 @@ export default function Contact() {
                                 <input
                                     type="email"
                                     id="email"
+                                    name="email"
                                     required
                                     className={styles.input}
                                     placeholder="john@example.com"
@@ -87,6 +106,7 @@ export default function Contact() {
                                 <label htmlFor="message" className={styles.label}>訊息內容</label>
                                 <textarea
                                     id="message"
+                                    name="message"
                                     required
                                     className={styles.textarea}
                                     placeholder="請告訴我您的專案需求..."
