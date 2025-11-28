@@ -1,0 +1,435 @@
+.section {
+    position: relative;
+    padding: 0;
+    background: #000;
+    overflow: visible;
+}
+
+/* Matrix Rain Background */
+.background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    background: #000;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.background::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: repeating-linear-gradient(0deg,
+            rgba(0, 255, 70, 0.03) 0px,
+            rgba(0, 255, 70, 0.03) 1px,
+            transparent 1px,
+            transparent 20px),
+        repeating-linear-gradient(90deg,
+            rgba(0, 255, 70, 0.03) 0px,
+            rgba(0, 255, 70, 0.03) 1px,
+            transparent 1px,
+            transparent 20px);
+    background-size: 100% 100%;
+    opacity: 0.1;
+}
+
+.matrixColumn {
+    position: absolute;
+    top: -50%;
+    width: 2px;
+    height: 100%;
+    background: linear-gradient(to bottom, transparent, #0f0, transparent);
+    animation: matrixRain linear infinite;
+    opacity: 0.15;
+}
+
+@keyframes matrixRain {
+    0% {
+        transform: translateY(0);
+    }
+
+    100% {
+        transform: translateY(100%);
+    }
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 10;
+    padding-bottom: 8rem;
+}
+
+.header {
+    text-align: center;
+    padding: 8rem 2rem 4rem;
+    position: relative;
+    z-index: 20;
+}
+
+.title {
+    font-size: 4rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+    background: linear-gradient(to right, #fff, #94a3b8);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.subtitle {
+    font-size: 1.25rem;
+    color: #94a3b8;
+}
+
+/* Sidebar Navigation */
+.sidebarNav {
+    position: fixed;
+    right: 30px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 100;
+    align-items: flex-end;
+    pointer-events: auto;
+    padding: 20px 10px;
+}
+
+.navItemWrapper {
+    position: relative;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    cursor: pointer;
+    padding-left: 20px;
+}
+
+.navItem {
+    width: 8px;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 50%;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+        height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+        background-color 0.3s ease,
+        border-radius 0.3s ease;
+    position: relative;
+    z-index: 2;
+    border: 1px solid transparent;
+}
+
+.navItemActive {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    /*color: #3b82f6;*/
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+}
+
+.navContent {
+    position: absolute;
+    left: 1rem;
+    display: flex;
+    align-items: center;
+    opacity: 0;
+    transform: translateX(20px);
+    transition: all 0.3s ease;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 3;
+    width: max-content;
+    justify-content: flex-end;
+    padding: 0 0.75em;
+    gap: 0.75em;
+}
+
+/* EXPANDED STATE (Triggered by sidebarNav hover) */
+.sidebarNav:hover .navItem {
+    width: var(--sidebar-width, 300px);
+    height: 34px;
+    border-radius: 5px;
+    background: rgba(10, 10, 10, 0.85);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transform: none;
+}
+
+/* Keep active item highlighted in expanded state */
+.sidebarNav:hover .navItemActive {
+    background: rgba(10, 10, 10, 0.95);
+    /*border-color: #3b82f6;*/
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+}
+
+/* Show content on container hover */
+.sidebarNav:hover .navContent {
+    opacity: 1;
+    transform: translateX(0);
+    transition-delay: 0.1s;
+}
+
+/* Current 狀態的文字顏色 */
+.navItemWrapper:has(.navItemActive) .navText {
+    color: #3b82f6;
+}
+
+/* Hover 狀態的文字顏色 */
+.navItemWrapper:hover .navText {
+    color: #94b8f4;
+}
+
+/* Hover on specific item (highlight effect) */
+.navItemWrapper:hover .navItem {
+    background: rgba(30, 30, 30, 0.95);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.navTag {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: 700;
+    min-width: 60px;
+    text-align: center;
+}
+
+.tagFrontend {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.tagUx {
+    background: rgba(236, 72, 153, 0.2);
+    color: #f472b6;
+    border: 1px solid rgba(236, 72, 153, 0.3);
+}
+
+.navText {
+    font-size: 0.9rem;
+    color: #fff;
+    font-weight: 500;
+    flex: 1;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Project Row Layout */
+.projectRow {
+    display: flex;
+    align-items: center;
+    gap: 6rem;
+    min-height: 80vh;
+    padding: 4rem 2rem;
+    opacity: 0;
+    position: relative;
+    z-index: 10;
+}
+
+.projectRowReverse {
+    flex-direction: row-reverse;
+}
+
+/* Slider Styles */
+.imageContainer {
+    flex: 1.2;
+    position: relative;
+    height: 500px;
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: #111;
+    z-index: 15;
+}
+
+.image {
+    object-fit: cover;
+}
+
+.sliderControls {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    z-index: 20;
+}
+
+.sliderDot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.activeDot {
+    background: #fff;
+    transform: scale(1.2);
+}
+
+.infoContainer {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    z-index: 15;
+}
+
+.projectNumber {
+    font-size: 5rem;
+    font-weight: 900;
+    color: rgba(255, 255, 255, 0.05);
+    line-height: 1;
+    margin-bottom: -1rem;
+    margin-left: -0.5rem;
+}
+
+.projectTitle {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    color: #fff;
+    background: linear-gradient(to right, #fff, #94a3b8);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+}
+
+.projectTag {
+    font-size: 0.875rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    margin-left: 1rem;
+    font-weight: 600;
+}
+
+.projectDesc {
+    font-size: 1.125rem;
+    color: #94a3b8;
+    line-height: 1.8;
+    margin-bottom: 2rem;
+}
+
+.tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 2.5rem;
+}
+
+.tag {
+    font-size: 0.875rem;
+    color: #fff;
+    background: rgba(59, 130, 246, 0.15);
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.links {
+    display: flex;
+    gap: 1rem;
+}
+
+.linkBtn,
+.githubBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem 2rem;
+    border-radius: 12px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.linkBtn {
+    background: #fff;
+    color: #000;
+}
+
+.linkBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(255, 255, 255, 0.2);
+}
+
+.githubBtn {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.githubBtn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+/* Category Section Header */
+.categoryHeader {
+    padding: 4rem 2rem;
+    text-align: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin-top: 4rem;
+    position: relative;
+    z-index: 10;
+}
+
+.categoryTitle {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 1rem;
+}
+
+@media (max-width: 1024px) {
+    .sidebarNav {
+        display: none;
+    }
+
+    .projectRow {
+        flex-direction: column;
+        gap: 3rem;
+        text-align: center;
+        padding: 4rem 1.5rem;
+    }
+
+    .projectRowReverse {
+        flex-direction: column;
+    }
+
+    .imageContainer {
+        width: 100%;
+        height: 300px;
+        flex: none;
+    }
+
+    .infoContainer {
+        align-items: center;
+    }
+
+    .projectNumber {
+        display: none;
+    }
+
+    .links {
+        justify-content: center;
+    }
+}

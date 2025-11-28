@@ -1,0 +1,204 @@
+.section {
+    position: relative;
+    padding: 8rem 2rem;
+    background: #050505;
+    /* Slightly lighter than pure black for contrast */
+    overflow: hidden;
+}
+
+.container {
+    max-width: 1000px;
+    margin: 0 auto;
+    position: relative;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 6rem;
+    position: relative;
+    z-index: 10;
+}
+
+.title {
+    font-size: 3.5rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+    background: linear-gradient(to right, #fff, #94a3b8);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.subtitle {
+    font-size: 1.2rem;
+    color: #64748b;
+    letter-spacing: 0.05em;
+}
+
+/* Timeline Structure */
+.timeline {
+    position: relative;
+    padding: 2rem 0;
+}
+
+/* The Center Line */
+.timeline::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 2px;
+    background: linear-gradient(to bottom,
+            transparent,
+            rgba(59, 130, 246, 0.5),
+            rgba(236, 72, 153, 0.5),
+            transparent);
+    transform: translateX(-50%);
+}
+
+.timelineItem {
+    display: flex;
+    justify-content: center;
+    padding-bottom: 4rem;
+    position: relative;
+}
+
+/* Alternating Layout */
+.timelineItem:nth-child(odd) {
+    flex-direction: row-reverse;
+}
+
+.timelineContent {
+    width: 45%;
+    position: relative;
+}
+
+.timelineItem:nth-child(odd) .timelineContent {
+    text-align: right;
+    padding-right: 3rem;
+}
+
+.timelineItem:nth-child(even) .timelineContent {
+    text-align: left;
+    padding-left: 3rem;
+}
+
+/* The Dot on the Line */
+.timelineDot {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #000;
+    border: 2px solid #3b82f6;
+    transform: translateX(-50%);
+    z-index: 5;
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+}
+
+.timelineItem:nth-child(even) .timelineDot {
+    border-color: #ec4899;
+    box-shadow: 0 0 15px rgba(236, 72, 153, 0.5);
+}
+
+/* Card Style */
+.card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    padding: 2rem;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.card:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.period {
+    display: inline-block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #3b82f6;
+    margin-bottom: 0.5rem;
+    padding: 4px 12px;
+    background: rgba(59, 130, 246, 0.1);
+    border-radius: 20px;
+}
+
+.timelineItem:nth-child(even) .period {
+    color: #ec4899;
+    background: rgba(236, 72, 153, 0.1);
+}
+
+.role {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 0.25rem;
+}
+
+.company {
+    font-size: 1.1rem;
+    color: #94a3b8;
+    margin-bottom: 1.5rem;
+}
+
+.description {
+    color: #cbd5e1;
+    line-height: 1.7;
+    margin-bottom: 1.5rem;
+}
+
+.skills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.timelineItem:nth-child(odd) .skills {
+    justify-content: flex-end;
+}
+
+.skill {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .timeline::before {
+        left: 20px;
+    }
+
+    .timelineItem {
+        flex-direction: row !important;
+        justify-content: flex-start;
+        padding-left: 50px;
+    }
+
+    .timelineContent {
+        width: 100% !important;
+        text-align: left !important;
+        padding: 0 !important;
+    }
+
+    .timelineDot {
+        left: 20px;
+    }
+
+    .timelineItem:nth-child(odd) .skills {
+        justify-content: flex-start;
+    }
+}
