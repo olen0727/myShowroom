@@ -40,13 +40,28 @@
 }
 
 .matrixColumn {
-    position: absolute;
+    /*position: absolute;
     top: -50%;
     width: 2px;
     height: 100%;
     background: linear-gradient(to bottom, transparent, #0f0, transparent);
     animation: matrixRain linear infinite;
     opacity: 0.15;
+    */
+    position: absolute;
+    top: -50%;
+    width: 1px;
+    height: 30%;
+    background: linear-gradient(to bottom,
+            transparent 0%,
+            rgba(0, 255, 0, 1) 20%,
+            rgba(0, 255, 0, 0.4) 60%,
+            rgba(0, 255, 0, 0.1) 90%,
+            transparent 100%);
+    animation: matrixRain linear infinite;
+    opacity: 0.8;
+    filter: blur(1.5px);
+    box-shadow: 0 0 2px rgba(0, 255, 0, 0.5);
 }
 
 @keyframes matrixRain {
@@ -315,8 +330,8 @@
 
 .projectTag {
     font-size: 0.875rem;
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
+    padding: 0.25rem 0.5rem;
+    border-radius: 5px;
     margin-left: 1rem;
     font-weight: 600;
 }

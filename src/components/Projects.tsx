@@ -303,8 +303,8 @@ export default function Projects() {
                         className={styles.matrixColumn}
                         style={{
                             left: `${Math.random() * 100}%`,
-                            animationDuration: `${Math.random() * 2 + 3}s`,
-                            animationDelay: `${Math.random() * 2}s`
+                            animationDuration: `${Math.random() * 2 + 4}s`,
+                            animationDelay: `${Math.random() * 5}s`
                         }}
                     />
                 ))}

@@ -140,13 +140,14 @@
     padding: 2rem;
     border-radius: 24px;
     border: 1px solid rgba(255, 255, 255, 0.05);
-    transition: all 0.3s ease;
+    transition: all 0.5s ease;
     backdrop-filter: blur(12px);
 }
 
 .skillCard:hover {
     background: rgba(20, 20, 20, 0.9);
     border-color: rgba(59, 130, 246, 0.2);
+
 }
 
 .skillIcon {
