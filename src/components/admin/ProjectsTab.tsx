@@ -20,8 +20,25 @@ import {
     ModalFooter,
     useDisclosure
 } from "@nextui-org/react";
-import { Plus, Edit2, Trash2, Search, ExternalLink, Github } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, ExternalLink, Github, GripVertical } from 'lucide-react';
 import Image from 'next/image';
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    useSortable,
+    rectSortingStrategy
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface Project {
     id: string;
@@ -33,6 +50,98 @@ interface Project {
     github_url?: string;
     category?: string;
     created_at?: string;
+    display_order?: number;
+}
+
+// Sortable Item Component
+function SortableProjectItem({
+    project,
+    onEdit,
+    onDelete
+}: {
+    project: Project;
+    onEdit: (p: Project) => void;
+    onDelete: (id: string) => void;
+}) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id: project.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        zIndex: isDragging ? 50 : 'auto',
+    };
+
+    return (
+        <div ref={setNodeRef} style={style} className="h-full">
+            <Card className="h-full py-4 bg-white/5 backdrop-blur-md border border-white/10">
+                <CardHeader className="pb-0 pt-2 px-4 flex-col items-start">
+                    <div className="flex justify-between w-full items-start">
+                        <div className="flex items-start gap-2">
+                            <div
+                                {...attributes}
+                                {...listeners}
+                                className="mt-1 cursor-grab active:cursor-grabbing text-default-400 hover:text-white transition-colors"
+                            >
+                                <GripVertical size={20} />
+                            </div>
+                            <div>
+                                <p className="text-tiny uppercase font-bold text-primary">{project.category}</p>
+                                <h4 className="font-bold text-large">{project.title}</h4>
+                            </div>
+                        </div>
+                        <div className="flex gap-1">
+                            <Tooltip content="Edit">
+                                <span className="text-lg text-default-400 cursor-pointer active:opacity-50 hover:text-primary transition-colors p-1" onClick={() => onEdit(project)}>
+                                    <Edit2 size={18} />
+                                </span>
+                            </Tooltip>
+                            <Tooltip content="Delete" color="danger">
+                                <span className="text-lg text-danger cursor-pointer active:opacity-50 hover:text-danger-400 transition-colors p-1" onClick={() => onDelete(project.id)}>
+                                    <Trash2 size={18} />
+                                </span>
+                            </Tooltip>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardBody className="overflow-visible py-2">
+                    <div className="relative w-full h-48 rounded-xl overflow-hidden mb-4 bg-black/20">
+                        {project.images?.[0] ? (
+                            <Image
+                                src={project.images[0]}
+                                alt={project.title}
+                                fill
+                                className="object-cover"
+                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                            />
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center text-default-500">
+                                No Image
+                            </div>
+                        )}
+                    </div>
+                    <p className="text-default-500 text-sm line-clamp-2 mb-4 min-h-[40px]">
+                        {project.description}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                        {project.tags?.slice(0, 3).map(tag => (
+                            <Chip key={tag} size="sm" variant="flat" className="bg-white/10 text-default-300">{tag}</Chip>
+                        ))}
+                        {(project.tags?.length || 0) > 3 && (
+                            <Chip size="sm" variant="flat" className="bg-white/10 text-default-300">+{project.tags!.length - 3}</Chip>
+                        )}
+                    </div>
+                </CardBody>
+            </Card>
+        </div>
+    );
 }
 
 export default function ProjectsTab() {
@@ -45,6 +154,17 @@ export default function ProjectsTab() {
     const [saving, setSaving] = useState(false);
     const [tagInput, setTagInput] = useState("");
 
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8, // Require 8px movement before drag starts to prevent accidental drags on clicks
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
     useEffect(() => {
         fetchProjects();
     }, []);
@@ -54,7 +174,7 @@ export default function ProjectsTab() {
             const { data, error } = await supabase
                 .from('projects')
                 .select('*')
-                .order('created_at', { ascending: false });
+                .order('display_order', { ascending: true });
 
             if (error) throw error;
             setProjects(data || []);
@@ -114,9 +234,14 @@ export default function ProjectsTab() {
                     .eq('id', currentProject.id);
                 if (error) throw error;
             } else {
+                // Get max display_order for new item
+                const maxOrder = projects.length > 0
+                    ? Math.max(...projects.map(p => p.display_order || 0))
+                    : 0;
+
                 const { error } = await supabase
                     .from('projects')
-                    .insert([projectData]);
+                    .insert([{ ...projectData, display_order: maxOrder + 1 }]);
                 if (error) throw error;
             }
 
@@ -185,6 +310,41 @@ export default function ProjectsTab() {
         }));
     };
 
+    const handleDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event;
+
+        if (over && active.id !== over.id) {
+            setProjects((items) => {
+                const oldIndex = items.findIndex((item) => item.id === active.id);
+                const newIndex = items.findIndex((item) => item.id === over.id);
+
+                const newItems = arrayMove(items, oldIndex, newIndex);
+
+                // Update DB asynchronously
+                const updates = newItems.map((p, idx) => ({
+                    id: p.id,
+                    display_order: idx + 1
+                }));
+
+                // We don't await this to keep UI responsive
+                (async () => {
+                    try {
+                        for (const update of updates) {
+                            await supabase
+                                .from('projects')
+                                .update({ display_order: update.display_order })
+                                .eq('id', update.id);
+                        }
+                    } catch (err) {
+                        console.error('Failed to update order in DB', err);
+                    }
+                })();
+
+                return newItems;
+            });
+        }
+    };
+
     const filteredProjects = projects.filter(project =>
         project.title.toLowerCase().includes(filterValue.toLowerCase()) ||
         project.category?.toLowerCase().includes(filterValue.toLowerCase())
@@ -207,59 +367,42 @@ export default function ProjectsTab() {
                 </Button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredProjects.map((project) => (
-                    <Card key={project.id} className="py-4 bg-white/5 backdrop-blur-md border border-white/10">
-                        <CardHeader className="pb-0 pt-2 px-4 flex-col items-start">
-                            <div className="flex justify-between w-full items-start">
-                                <div>
-                                    <p className="text-tiny uppercase font-bold text-primary">{project.category}</p>
-                                    <h4 className="font-bold text-large">{project.title}</h4>
-                                </div>
-                                <div className="flex gap-2">
-                                    <Tooltip content="Edit">
-                                        <span className="text-lg text-default-400 cursor-pointer active:opacity-50" onClick={() => handleEdit(project)}>
-                                            <Edit2 size={18} />
-                                        </span>
-                                    </Tooltip>
-                                    <Tooltip content="Delete" color="danger">
-                                        <span className="text-lg text-danger cursor-pointer active:opacity-50" onClick={() => handleDelete(project.id)}>
-                                            <Trash2 size={18} />
-                                        </span>
-                                    </Tooltip>
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardBody className="overflow-visible py-2">
-                            <div className="relative w-full h-48 rounded-xl overflow-hidden mb-4">
-                                {project.images?.[0] ? (
-                                    <Image
-                                        src={project.images[0]}
-                                        alt={project.title}
-                                        fill
-                                        className="object-cover"
-                                    />
-                                ) : (
-                                    <div className="w-full h-full bg-default-100 flex items-center justify-center text-default-500">
-                                        No Image
-                                    </div>
-                                )}
-                            </div>
-                            <p className="text-default-500 text-sm line-clamp-2 mb-4">
-                                {project.description}
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                                {project.tags?.slice(0, 3).map(tag => (
-                                    <Chip key={tag} size="sm" variant="flat">{tag}</Chip>
-                                ))}
-                                {(project.tags?.length || 0) > 3 && (
-                                    <Chip size="sm" variant="flat">+{project.tags!.length - 3}</Chip>
-                                )}
-                            </div>
-                        </CardBody>
-                    </Card>
-                ))}
-            </div>
+            {filterValue ? (
+                // If filtering, disable drag and drop
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filteredProjects.map((project) => (
+                        <SortableProjectItem
+                            key={project.id}
+                            project={project}
+                            onEdit={handleEdit}
+                            onDelete={handleDelete}
+                        />
+                    ))}
+                </div>
+            ) : (
+                // If not filtering, enable drag and drop
+                <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                >
+                    <SortableContext
+                        items={projects.map(p => p.id)}
+                        strategy={rectSortingStrategy}
+                    >
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {projects.map((project) => (
+                                <SortableProjectItem
+                                    key={project.id}
+                                    project={project}
+                                    onEdit={handleEdit}
+                                    onDelete={handleDelete}
+                                />
+                            ))}
+                        </div>
+                    </SortableContext>
+                </DndContext>
+            )}
 
             <Modal
                 isOpen={isOpen}
