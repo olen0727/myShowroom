@@ -2,31 +2,48 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Code2, Database, Layout, Terminal, Server, Smartphone, Globe, Cpu, Cloud, GitBranch, Box, Layers, Users, CheckCircle, Search } from 'lucide-react';
+import {
+    Code2, Database, Layout, Terminal, Server, Smartphone, Globe, Cpu, Cloud, GitBranch, Box, Layers, Users, CheckCircle, Search,
+    Lock, Wifi, Monitor, PenTool, Activity, Command, Hash, Link as LinkIcon
+} from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import styles from './About.module.css';
 
-// Icon Map
-const ICON_MAP: Record<string, any> = {
-    Layout, Database, Terminal, Code2, Server, Smartphone, Globe, Cpu, Cloud, GitBranch, Box, Layers, Users, CheckCircle, Search
-};
+// Default categories fallback
+const DEFAULT_CATEGORIES = [
+    { name: '前端開發', icon: 'Layout' },
+    { name: '後端開發', icon: 'Database' },
+    { name: '工具與維運', icon: 'Terminal' },
+    { name: '其他技能', icon: 'Code2' }
+];
 
-const CATEGORY_ORDER = ['前端開發', '後端開發', '工具與維運', '其他技能'];
+// Extended Icon Map
+const ICON_MAP: Record<string, any> = {
+    Layout, Database, Terminal, Code2, Server, Smartphone, Globe, Cpu, Cloud, GitBranch, Box, Layers, Users, CheckCircle, Search,
+    Lock, Wifi, Monitor, PenTool, Activity, Command, Hash, Link: LinkIcon
+};
 
 export default function About() {
     const [profile, setProfile] = useState<any>(null);
     const [skills, setSkills] = useState<any[]>([]);
+    const [categories, setCategories] = useState<any[]>(DEFAULT_CATEGORIES);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchData = async () => {
             try {
                 const [profileRes, skillsRes] = await Promise.all([
-                    supabase.from('profile').select('about_bio').single(),
-                    supabase.from('skills').select('*').order('display_order', { ascending: true })
+                    supabase.from('profile').select('about_bio, skill_categories').single(),
+                    supabase.from('skills').select('*')
                 ]);
 
-                if (profileRes.data) setProfile(profileRes.data);
+                if (profileRes.data) {
+                    setProfile(profileRes.data);
+                    // Use configured categories if available
+                    if (profileRes.data.skill_categories && Array.isArray(profileRes.data.skill_categories) && profileRes.data.skill_categories.length > 0) {
+                        setCategories(profileRes.data.skill_categories);
+                    }
+                }
                 if (skillsRes.data) setSkills(skillsRes.data);
             } catch (error) {
                 console.error('Error fetching about data:', error);
@@ -37,21 +54,27 @@ export default function About() {
         fetchData();
     }, []);
 
-    // Group skills by category
-    const groupedSkills = CATEGORY_ORDER.map(category => {
-        const categorySkills = skills.filter(s => s.category === category);
+    // Group skills by category based on configured order
+    const groupedSkills = categories.map(category => {
+        const categoryName = typeof category === 'string' ? category : category.name;
+        const categorySkills = skills.filter(s => s.category === categoryName);
+
         if (categorySkills.length === 0) return null;
 
-        // Use the icon of the first skill or a default one as the category icon
-        // Ideally, category icons should be defined in a separate config or DB
-        let CategoryIcon = Layout;
-        if (category === '後端開發') CategoryIcon = Database;
-        if (category === '工具與維運') CategoryIcon = Terminal;
-        if (category === '其他技能') CategoryIcon = Code2;
+        // Determine icon
+        let IconComponent = Code2; // Default
+        if (category.icon && ICON_MAP[category.icon]) {
+            IconComponent = ICON_MAP[category.icon];
+        } else {
+            // Fallback logic based on name keywords
+            if (categoryName.includes('前端')) IconComponent = Layout;
+            else if (categoryName.includes('後端')) IconComponent = Database;
+            else if (categoryName.includes('工具')) IconComponent = Terminal;
+        }
 
         return {
-            title: category,
-            icon: <CategoryIcon size={24} />,
+            title: categoryName,
+            icon: <IconComponent size={24} />,
             items: categorySkills.map(s => s.name)
         };
     }).filter(Boolean);

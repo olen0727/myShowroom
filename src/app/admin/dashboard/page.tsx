@@ -36,8 +36,17 @@ export default function AdminDashboard() {
 
     useEffect(() => {
         const checkUser = async () => {
-            // TEMPORARY: Bypass login check for UI development
-            setLoading(false);
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (!session) {
+                    router.push('/admin/login');
+                } else {
+                    setLoading(false);
+                }
+            } catch (error) {
+                console.error('Error checking auth:', error);
+                router.push('/admin/login');
+            }
         };
         checkUser();
     }, [router]);

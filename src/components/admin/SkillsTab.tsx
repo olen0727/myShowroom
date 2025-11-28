@@ -2,49 +2,114 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Plus, Trash2, Save, Loader2, X, Code2 } from 'lucide-react';
+import {
+    Input,
+    Button,
+    Card,
+    CardBody,
+    CardHeader,
+    Chip,
+    Divider,
+    Spacer,
+    Modal,
+    ModalContent,
+    ModalHeader,
+    ModalBody,
+    ModalFooter,
+    useDisclosure,
+    Tooltip,
+    Popover,
+    PopoverTrigger,
+    PopoverContent
+} from "@nextui-org/react";
+import {
+    Plus, X, Code2, Database, Terminal, Layers, Settings, Trash2, ArrowUp, ArrowDown, Edit2,
+    Server, Smartphone, Globe, Cpu, Cloud, GitBranch, Box, Users, CheckCircle, Search,
+    Lock, Wifi, Monitor, PenTool, Activity, Command, Hash, Link as LinkIcon
+} from 'lucide-react';
+
+// Icon Map for dynamic rendering in Admin
+const ICON_MAP: Record<string, any> = {
+    Code2, Database, Terminal, Layers, Layout: Monitor, Server, Smartphone, Globe, Cpu, Cloud,
+    GitBranch, Box, Users, CheckCircle, Search, Lock, Wifi, Monitor, PenTool, Activity,
+    Command, Hash, Link: LinkIcon
+};
+
+const AVAILABLE_ICONS = Object.keys(ICON_MAP);
 
 interface Skill {
     id: string;
     name: string;
     category: string;
-    icon?: string;
+    display_order?: number;
 }
+
+interface Category {
+    name: string;
+    icon: string;
+}
+
+const DEFAULT_CATEGORIES: Category[] = [
+    { name: '前端開發', icon: 'Layout' },
+    { name: '後端開發', icon: 'Database' },
+    { name: '工具與維運', icon: 'Terminal' },
+    { name: '其他技能', icon: 'Code2' }
+];
 
 export default function SkillsTab() {
     const [skills, setSkills] = useState<Skill[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [newSkill, setNewSkill] = useState('');
-    const [selectedCategory, setSelectedCategory] = useState('Frontend');
+    const [selectedCategory, setSelectedCategory] = useState('');
 
-    const categories = ['Frontend', 'Backend', 'Database', 'Tools', 'Design', 'Other'];
+    // Category Management
+    const { isOpen, onOpen, onOpenChange } = useDisclosure();
+    const [editingCatIndex, setEditingCatIndex] = useState<number | null>(null);
+    const [editCatName, setEditCatName] = useState('');
+    const [editCatIcon, setEditCatIcon] = useState('Code2');
+    const [isAddingNew, setIsAddingNew] = useState(false);
 
     useEffect(() => {
-        fetchSkills();
+        fetchData();
     }, []);
 
-    const fetchSkills = async () => {
+    const fetchData = async () => {
         try {
-            const { data, error } = await supabase
-                .from('skills')
-                .select('*')
-                .order('category');
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
 
-            if (error) throw error;
-            setSkills(data || []);
+            const [skillsRes, profileRes] = await Promise.all([
+                supabase.from('skills').select('*').order('category'),
+                supabase.from('profile').select('skill_categories').eq('id', user.id).single()
+            ]);
+
+            if (skillsRes.error) throw skillsRes.error;
+            setSkills(skillsRes.data || []);
+
+            if (profileRes.data?.skill_categories && Array.isArray(profileRes.data.skill_categories)) {
+                setCategories(profileRes.data.skill_categories);
+                if (profileRes.data.skill_categories.length > 0) {
+                    setSelectedCategory(profileRes.data.skill_categories[0].name);
+                }
+            } else {
+                setCategories(DEFAULT_CATEGORIES);
+                setSelectedCategory(DEFAULT_CATEGORIES[0].name);
+            }
+
         } catch (error) {
-            console.error('Error fetching skills:', error);
+            console.error('Error fetching data:', error);
         } finally {
             setLoading(false);
         }
     };
 
     const handleAddSkill = () => {
-        if (!newSkill.trim()) return;
+        if (!newSkill.trim() || !selectedCategory) return;
 
         const skill: Skill = {
-            id: Math.random().toString(36).substr(2, 9), // Temporary ID
+            id: Math.random().toString(36).substr(2, 9),
             name: newSkill.trim(),
             category: selectedCategory
         };
@@ -57,20 +122,103 @@ export default function SkillsTab() {
         setSkills(skills.filter(s => s.id !== id));
     };
 
+    // --- Category Management ---
+    const startEditCategory = (index: number) => {
+        setEditingCatIndex(index);
+        setEditCatName(categories[index].name);
+        setEditCatIcon(categories[index].icon || 'Code2');
+        setIsAddingNew(false);
+    };
+
+    const startAddCategory = () => {
+        setEditingCatIndex(null);
+        setEditCatName('');
+        setEditCatIcon('Code2');
+        setIsAddingNew(true);
+    };
+
+    const saveCategoryEdit = async () => {
+        if (!editCatName.trim()) return;
+
+        const newCats = [...categories];
+
+        if (isAddingNew) {
+            // Add New
+            if (categories.some(c => c.name === editCatName.trim())) {
+                alert('Category name already exists');
+                return;
+            }
+            newCats.push({ name: editCatName.trim(), icon: editCatIcon });
+        } else if (editingCatIndex !== null) {
+            // Edit Existing
+            const oldName = categories[editingCatIndex].name;
+            const newName = editCatName.trim();
+
+            // Update local category list
+            newCats[editingCatIndex] = { name: newName, icon: editCatIcon };
+
+            // Update local skills list to reflect category name change
+            if (oldName !== newName) {
+                const updatedSkills = skills.map(s =>
+                    s.category === oldName ? { ...s, category: newName } : s
+                );
+                setSkills(updatedSkills);
+
+                // Also update selected category if needed
+                if (selectedCategory === oldName) setSelectedCategory(newName);
+            }
+        }
+
+        setCategories(newCats);
+        setEditingCatIndex(null);
+        setIsAddingNew(false);
+    };
+
+    const handleRemoveCategory = (name: string) => {
+        if (confirm(`Delete category "${name}"? Skills in this category will be hidden until reassigned.`)) {
+            setCategories(categories.filter(c => c.name !== name));
+            if (selectedCategory === name) {
+                setSelectedCategory(categories[0]?.name || '');
+            }
+        }
+    };
+
+    const moveCategory = (index: number, direction: 'up' | 'down') => {
+        const newCats = [...categories];
+        if (direction === 'up' && index > 0) {
+            [newCats[index], newCats[index - 1]] = [newCats[index - 1], newCats[index]];
+        } else if (direction === 'down' && index < newCats.length - 1) {
+            [newCats[index], newCats[index + 1]] = [newCats[index + 1], newCats[index]];
+        }
+        setCategories(newCats);
+    };
+
     const handleSave = async () => {
         setSaving(true);
         try {
-            // First delete all existing skills (simple approach for now)
-            // In a real app, you'd want to diff and update/insert/delete
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('No user logged in');
+
+            // 1. Save Categories to Profile
+            const { error: profileError } = await supabase
+                .from('profile')
+                .update({ skill_categories: categories })
+                .eq('id', user.id);
+
+            if (profileError) {
+                console.warn('Failed to save categories to profile.', profileError);
+                alert(`Warning: Could not save categories. Error: ${profileError.message}`);
+            }
+
+            // 2. Save Skills (This will also save the updated category names for skills)
             const { error: deleteError } = await supabase
                 .from('skills')
                 .delete()
-                .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+                .neq('id', '00000000-0000-0000-0000-000000000000');
 
             if (deleteError) throw deleteError;
 
-            // Insert current skills
-            const skillsToInsert = skills.map(({ id, ...rest }) => rest); // Remove temp IDs
+            const skillsToInsert = skills.map(({ id, ...rest }) => rest);
             if (skillsToInsert.length > 0) {
                 const { error: insertError } = await supabase
                     .from('skills')
@@ -79,127 +227,257 @@ export default function SkillsTab() {
                 if (insertError) throw insertError;
             }
 
-            await fetchSkills(); // Refresh to get real IDs
-            alert('技能列表已更新');
-        } catch (error) {
-            console.error('Error saving skills:', error);
-            alert('儲存失敗');
+            await fetchData();
+            alert('Skills and Categories updated successfully');
+        } catch (error: any) {
+            console.error('Error saving:', error);
+            alert(`Failed to save changes: ${error.message || 'Unknown error'}`);
         } finally {
             setSaving(false);
         }
     };
 
-    if (loading) return <div>載入中...</div>;
+    if (loading) return <div>Loading...</div>;
 
     return (
-        <div className="relative space-y-8">
-            {/* Floating Save Button */}
-            <div className="fixed bottom-8 right-8 z-50">
-                <button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="bg-blue-600 hover:bg-blue-500 text-white p-4 rounded-full shadow-lg hover:shadow-blue-500/50 transition-all duration-300 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="儲存變更"
+        <div className="space-y-6 max-w-7xl mx-auto">
+            <div className="flex justify-between items-center sticky top-4 z-50 bg-black/50 backdrop-blur-md p-4 rounded-xl border border-white/10">
+                <Button
+                    variant="flat"
+                    color="secondary"
+                    startContent={<Settings size={18} />}
+                    onPress={onOpen}
                 >
-                    {saving ? <Loader2 className="animate-spin" /> : <Save size={24} />}
-                </button>
+                    Manage Categories
+                </Button>
+                <Button
+                    color="primary"
+                    startContent={<Plus size={18} />}
+                    isLoading={saving}
+                    onPress={handleSave}
+                    className="shadow-lg"
+                >
+                    Save Changes
+                </Button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left Column: Add New Skill */}
                 <div className="space-y-6">
-                    <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-8 shadow-xl sticky top-6">
-                        <h3 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
-                            <Plus className="text-blue-400" />
-                            新增技能
-                        </h3>
-
-                        <div className="space-y-4">
+                    <Card className="bg-white/5 border border-white/10 sticky top-24">
+                        <CardHeader>
+                            <h4 className="text-lg font-bold text-primary">Add New Skill</h4>
+                        </CardHeader>
+                        <Divider className="bg-white/10" />
+                        <CardBody className="space-y-6">
                             <div className="space-y-2">
-                                <label className="text-sm text-neutral-400">類別</label>
-                                <div className="grid grid-cols-2 gap-2">
+                                <label className="text-sm text-default-500">Select Category</label>
+                                <div className="flex flex-wrap gap-2">
                                     {categories.map(cat => (
-                                        <button
-                                            key={cat}
-                                            onClick={() => setSelectedCategory(cat)}
-                                            className={`
-                                                px-3 py-2 rounded-lg text-sm transition-all border
-                                                ${selectedCategory === cat
-                                                    ? 'bg-blue-500/20 text-blue-300 border-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.2)]'
-                                                    : 'bg-black/20 text-neutral-400 border-white/5 hover:bg-white/5 hover:text-white'
-                                                }
-                                            `}
+                                        <Button
+                                            key={cat.name}
+                                            size="sm"
+                                            variant={selectedCategory === cat.name ? "solid" : "bordered"}
+                                            color={selectedCategory === cat.name ? "primary" : "default"}
+                                            onPress={() => setSelectedCategory(cat.name)}
+                                            className="justify-start"
                                         >
-                                            {cat}
-                                        </button>
+                                            {cat.name}
+                                        </Button>
                                     ))}
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <label className="text-sm text-neutral-400">技能名稱</label>
-                                <div className="flex gap-2">
-                                    <input
-                                        type="text"
-                                        value={newSkill}
-                                        onChange={e => setNewSkill(e.target.value)}
-                                        onKeyDown={e => e.key === 'Enter' && handleAddSkill()}
-                                        className="flex-1 bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 outline-none transition-all placeholder:text-neutral-600"
-                                        placeholder="例如：React"
-                                    />
-                                    <button
-                                        onClick={handleAddSkill}
-                                        disabled={!newSkill.trim()}
-                                        className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            <Input
+                                label="Skill Name"
+                                placeholder="e.g. React, Python"
+                                value={newSkill}
+                                onValueChange={setNewSkill}
+                                onKeyDown={(e) => e.key === 'Enter' && handleAddSkill()}
+                                variant="bordered"
+                                endContent={
+                                    <Button
+                                        isIconOnly
+                                        size="sm"
+                                        color="primary"
+                                        onPress={handleAddSkill}
+                                        isDisabled={!newSkill.trim() || !selectedCategory}
                                     >
-                                        <Plus size={20} />
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                                        <Plus size={16} />
+                                    </Button>
+                                }
+                            />
+                        </CardBody>
+                    </Card>
                 </div>
 
                 {/* Right Column: Skills List */}
                 <div className="lg:col-span-2 space-y-6">
                     {categories.map(category => {
-                        const categorySkills = skills.filter(s => s.category === category);
-                        if (categorySkills.length === 0) return null;
+                        const categorySkills = skills.filter(s => s.category === category.name);
+                        const Icon = ICON_MAP[category.icon] || Code2;
 
                         return (
-                            <div key={category} className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 shadow-xl">
-                                <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                                    <Code2 size={20} className="text-purple-400" />
-                                    {category}
-                                </h4>
-                                <div className="flex flex-wrap gap-3">
-                                    {categorySkills.map(skill => (
-                                        <div
-                                            key={skill.id}
-                                            className="group flex items-center gap-2 bg-black/20 hover:bg-black/40 border border-white/5 hover:border-white/20 rounded-lg pl-4 pr-2 py-2 transition-all hover:shadow-lg hover:shadow-purple-500/10"
-                                        >
-                                            <span className="text-neutral-200 font-medium">{skill.name}</span>
-                                            <button
-                                                onClick={() => handleRemoveSkill(skill.id)}
-                                                className="p-1 text-neutral-500 hover:text-red-400 hover:bg-red-500/10 rounded-full transition-colors opacity-0 group-hover:opacity-100"
+                            <Card key={category.name} className="bg-white/5 border border-white/10">
+                                <CardHeader className="flex gap-3">
+                                    <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                                        <Icon size={20} />
+                                    </div>
+                                    <h4 className="text-lg font-bold text-white">{category.name}</h4>
+                                </CardHeader>
+                                <Divider className="bg-white/10" />
+                                <CardBody>
+                                    <div className="flex flex-wrap gap-3">
+                                        {categorySkills.map(skill => (
+                                            <Chip
+                                                key={skill.id}
+                                                onClose={() => handleRemoveSkill(skill.id)}
+                                                variant="flat"
+                                                color="default"
+                                                classNames={{
+                                                    base: "bg-white/10 hover:bg-white/20 transition-colors border border-white/5",
+                                                    content: "text-white font-medium"
+                                                }}
                                             >
-                                                <X size={14} />
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
+                                                {skill.name}
+                                            </Chip>
+                                        ))}
+                                        {categorySkills.length === 0 && (
+                                            <p className="text-default-400 text-sm italic">No skills in this category yet.</p>
+                                        )}
+                                    </div>
+                                </CardBody>
+                            </Card>
                         );
                     })}
-
-                    {skills.length === 0 && (
-                        <div className="text-center py-16 text-neutral-500 border-2 border-dashed border-white/10 rounded-2xl bg-white/5 backdrop-blur-sm">
-                            <p>目前沒有技能資料</p>
-                            <p className="text-sm mt-2">請從左側新增技能</p>
-                        </div>
-                    )}
                 </div>
             </div>
+
+            {/* Category Management Modal */}
+            <Modal
+                isOpen={isOpen}
+                onOpenChange={onOpenChange}
+                backdrop="blur"
+                size="2xl"
+                scrollBehavior="inside"
+            >
+                <ModalContent>
+                    {(onClose) => (
+                        <>
+                            <ModalHeader className="flex flex-col gap-1">Manage Categories</ModalHeader>
+                            <ModalBody>
+                                {(editingCatIndex !== null || isAddingNew) ? (
+                                    <div className="space-y-4 p-4 bg-default-50 rounded-xl border border-default-200">
+                                        <h4 className="font-bold text-small uppercase text-default-500">
+                                            {isAddingNew ? 'New Category' : 'Edit Category'}
+                                        </h4>
+                                        <div className="flex gap-4">
+                                            <div className="flex-1">
+                                                <Input
+                                                    label="Name"
+                                                    placeholder="Category Name"
+                                                    value={editCatName}
+                                                    onValueChange={setEditCatName}
+                                                />
+                                            </div>
+                                            <div>
+                                                <Popover placement="bottom" showArrow offset={10}>
+                                                    <PopoverTrigger>
+                                                        <Button
+                                                            className="h-14 w-14"
+                                                            variant="bordered"
+                                                        >
+                                                            {ICON_MAP[editCatIcon] ? (
+                                                                (() => {
+                                                                    const Icon = ICON_MAP[editCatIcon];
+                                                                    return <Icon size={24} />;
+                                                                })()
+                                                            ) : <Code2 size={24} />}
+                                                        </Button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-[300px] p-4">
+                                                        <div className="grid grid-cols-5 gap-2 max-h-[200px] overflow-y-auto custom-scrollbar">
+                                                            {AVAILABLE_ICONS.map(iconName => {
+                                                                const Icon = ICON_MAP[iconName];
+                                                                return (
+                                                                    <Button
+                                                                        key={iconName}
+                                                                        isIconOnly
+                                                                        variant={editCatIcon === iconName ? "solid" : "light"}
+                                                                        color={editCatIcon === iconName ? "primary" : "default"}
+                                                                        onPress={() => setEditCatIcon(iconName)}
+                                                                        title={iconName}
+                                                                    >
+                                                                        <Icon size={20} />
+                                                                    </Button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </PopoverContent>
+                                                </Popover>
+                                            </div>
+                                        </div>
+                                        <div className="flex justify-end gap-2">
+                                            <Button size="sm" variant="light" onPress={() => {
+                                                setEditingCatIndex(null);
+                                                setIsAddingNew(false);
+                                            }}>Cancel</Button>
+                                            <Button size="sm" color="primary" onPress={saveCategoryEdit}>
+                                                {isAddingNew ? 'Add' : 'Update'}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <Button
+                                        color="primary"
+                                        variant="flat"
+                                        startContent={<Plus size={16} />}
+                                        onPress={startAddCategory}
+                                        className="mb-4"
+                                    >
+                                        Add New Category
+                                    </Button>
+                                )}
+
+                                <div className="space-y-2">
+                                    {categories.map((cat, idx) => {
+                                        const Icon = ICON_MAP[cat.icon] || Code2;
+                                        return (
+                                            <div key={idx} className="flex items-center justify-between p-3 bg-default-100 rounded-lg group hover:bg-default-200 transition-colors">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-2 bg-white rounded-md shadow-sm text-default-500">
+                                                        <Icon size={18} />
+                                                    </div>
+                                                    <span className="font-medium">{cat.name}</span>
+                                                </div>
+                                                <div className="flex gap-1 opacity-50 group-hover:opacity-100 transition-opacity">
+                                                    <Button isIconOnly size="sm" variant="light" onPress={() => startEditCategory(idx)}>
+                                                        <Edit2 size={16} />
+                                                    </Button>
+                                                    <Button isIconOnly size="sm" variant="light" onPress={() => moveCategory(idx, 'up')} isDisabled={idx === 0}>
+                                                        <ArrowUp size={16} />
+                                                    </Button>
+                                                    <Button isIconOnly size="sm" variant="light" onPress={() => moveCategory(idx, 'down')} isDisabled={idx === categories.length - 1}>
+                                                        <ArrowDown size={16} />
+                                                    </Button>
+                                                    <Button isIconOnly size="sm" color="danger" variant="light" onPress={() => handleRemoveCategory(cat.name)}>
+                                                        <Trash2 size={16} />
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </ModalBody>
+                            <ModalFooter>
+                                <Button color="primary" onPress={onClose}>
+                                    Done
+                                </Button>
+                            </ModalFooter>
+                        </>
+                    )}
+                </ModalContent>
+            </Modal>
         </div>
     );
 }
