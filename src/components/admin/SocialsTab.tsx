@@ -2,31 +2,49 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Plus, Trash2, Save, Loader2, X, Share2, Github, Linkedin, Twitter, Facebook, Instagram, Youtube, Globe } from 'lucide-react';
+import {
+    Input,
+    Button,
+    Card,
+    CardBody,
+    CardHeader,
+    Divider,
+    Modal,
+    ModalContent,
+    ModalHeader,
+    ModalBody,
+    ModalFooter,
+    useDisclosure,
+    Popover,
+    PopoverTrigger,
+    PopoverContent
+} from "@nextui-org/react";
+import {
+    Plus, Trash2, Edit2, Link as LinkIcon, Github, Linkedin, Twitter, Facebook, Instagram, Youtube, Mail, Globe
+} from 'lucide-react';
+
+// Icon Map
+const ICON_MAP: Record<string, any> = {
+    Github, Linkedin, Twitter, Facebook, Instagram, Youtube, Mail, Globe, Link: LinkIcon
+};
+const AVAILABLE_ICONS = Object.keys(ICON_MAP);
 
 interface SocialLink {
     id: string;
     platform: string;
     url: string;
-    icon?: string;
+    icon: string;
+    display_order?: number;
 }
 
 export default function SocialsTab() {
     const [socials, setSocials] = useState<SocialLink[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [newUrl, setNewUrl] = useState('');
-    const [selectedPlatform, setSelectedPlatform] = useState('Github');
 
-    const platforms = [
-        { name: 'Github', icon: Github },
-        { name: 'Linkedin', icon: Linkedin },
-        { name: 'Twitter', icon: Twitter },
-        { name: 'Facebook', icon: Facebook },
-        { name: 'Instagram', icon: Instagram },
-        { name: 'Youtube', icon: Youtube },
-        { name: 'Website', icon: Globe },
-    ];
+    // Modal State
+    const { isOpen, onOpen, onOpenChange } = useDisclosure();
+    const [currentSocial, setCurrentSocial] = useState<Partial<SocialLink>>({});
 
     useEffect(() => {
         fetchSocials();
@@ -36,7 +54,8 @@ export default function SocialsTab() {
         try {
             const { data, error } = await supabase
                 .from('social_links')
-                .select('*');
+                .select('*')
+                .order('display_order', { ascending: true });
 
             if (error) throw error;
             setSocials(data || []);
@@ -47,173 +66,211 @@ export default function SocialsTab() {
         }
     };
 
-    const handleAddSocial = () => {
-        if (!newUrl.trim()) return;
-
-        const social: SocialLink = {
-            id: Math.random().toString(36).substr(2, 9),
-            platform: selectedPlatform,
-            url: newUrl.trim()
-        };
-
-        setSocials([...socials, social]);
-        setNewUrl('');
+    const handleEdit = (social: SocialLink) => {
+        setCurrentSocial(social);
+        onOpen();
     };
 
-    const handleRemoveSocial = (id: string) => {
-        setSocials(socials.filter(s => s.id !== id));
+    const handleCreate = () => {
+        setCurrentSocial({ icon: 'Link' }); // Default icon
+        onOpen();
     };
 
-    const handleSave = async () => {
-        setSaving(true);
+    const handleDelete = async (id: string) => {
+        if (!confirm('Are you sure you want to delete this link?')) return;
+
         try {
-            const { error: deleteError } = await supabase
+            const { error } = await supabase
                 .from('social_links')
                 .delete()
-                .neq('id', '00000000-0000-0000-0000-000000000000');
+                .eq('id', id);
 
-            if (deleteError) throw deleteError;
+            if (error) throw error;
+            setSocials(socials.filter(s => s.id !== id));
+        } catch (error) {
+            console.error('Error deleting social link:', error);
+            alert('Failed to delete link');
+        }
+    };
 
-            const socialsToInsert = socials.map(({ id, ...rest }) => rest);
-            if (socialsToInsert.length > 0) {
-                const { error: insertError } = await supabase
+    const handleSave = async (onClose: () => void) => {
+        setSaving(true);
+        try {
+            const socialData = {
+                platform: currentSocial.platform,
+                url: currentSocial.url,
+                icon: currentSocial.icon,
+            };
+
+            if (currentSocial.id) {
+                // Update
+                const { error } = await supabase
                     .from('social_links')
-                    .insert(socialsToInsert);
-
-                if (insertError) throw insertError;
+                    .update(socialData)
+                    .eq('id', currentSocial.id);
+                if (error) throw error;
+            } else {
+                // Insert
+                const { error } = await supabase
+                    .from('social_links')
+                    .insert([socialData]);
+                if (error) throw error;
             }
 
             await fetchSocials();
-            alert('社群連結已更新');
-        } catch (error) {
-            console.error('Error saving socials:', error);
-            alert('儲存失敗');
+            onClose();
+        } catch (error: any) {
+            console.error('Error saving social link:', error);
+            alert(`Failed to save: ${error.message}`);
         } finally {
             setSaving(false);
         }
     };
 
-    if (loading) return <div>載入中...</div>;
+    if (loading) return <div>Loading...</div>;
 
     return (
-        <div className="relative space-y-8">
-            {/* Floating Save Button */}
-            <div className="fixed bottom-8 right-8 z-50">
-                <button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="bg-blue-600 hover:bg-blue-500 text-white p-4 rounded-full shadow-lg hover:shadow-blue-500/50 transition-all duration-300 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="儲存變更"
+        <div className="space-y-6 max-w-5xl mx-auto">
+            <div className="flex justify-end sticky top-4 z-50">
+                <Button
+                    color="primary"
+                    startContent={<Plus size={18} />}
+                    onPress={handleCreate}
+                    className="shadow-lg"
                 >
-                    {saving ? <Loader2 className="animate-spin" /> : <Save size={24} />}
-                </button>
+                    Add Social Link
+                </Button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Left Column: Add New Social */}
-                <div className="space-y-6">
-                    <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-8 shadow-xl sticky top-6">
-                        <h3 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
-                            <Plus className="text-blue-400" />
-                            新增連結
-                        </h3>
-
-                        <div className="space-y-6">
-                            <div className="space-y-3">
-                                <label className="text-sm text-neutral-400">選擇平台</label>
-                                <div className="grid grid-cols-3 gap-2">
-                                    {platforms.map(p => {
-                                        const Icon = p.icon;
-                                        return (
-                                            <button
-                                                key={p.name}
-                                                onClick={() => setSelectedPlatform(p.name)}
-                                                className={`
-                                                    flex flex-col items-center gap-2 p-3 rounded-xl transition-all border
-                                                    ${selectedPlatform === p.name
-                                                        ? 'bg-blue-500/20 text-blue-300 border-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.2)]'
-                                                        : 'bg-black/20 text-neutral-400 border-white/5 hover:bg-white/5 hover:text-white'
-                                                    }
-                                                `}
-                                            >
-                                                <Icon size={20} />
-                                                <span className="text-xs">{p.name}</span>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-sm text-neutral-400">連結 URL</label>
-                                <div className="flex gap-2">
-                                    <input
-                                        type="url"
-                                        value={newUrl}
-                                        onChange={e => setNewUrl(e.target.value)}
-                                        onKeyDown={e => e.key === 'Enter' && handleAddSocial()}
-                                        className="flex-1 bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 outline-none transition-all placeholder:text-neutral-600"
-                                        placeholder="https://..."
-                                    />
-                                    <button
-                                        onClick={handleAddSocial}
-                                        disabled={!newUrl.trim()}
-                                        className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        <Plus size={20} />
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Right Column: Socials List */}
-                <div className="lg:col-span-2 space-y-6">
-                    <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-8 shadow-xl">
-                        <h4 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
-                            <Share2 className="text-purple-400" />
-                            已連結帳號
-                        </h4>
-
-                        <div className="space-y-4">
-                            {socials.map(social => {
-                                const platformInfo = platforms.find(p => p.name === social.platform) || { icon: Globe };
-                                const Icon = platformInfo.icon;
-
-                                return (
-                                    <div
-                                        key={social.id}
-                                        className="group flex items-center gap-4 bg-black/20 hover:bg-black/40 border border-white/5 hover:border-white/20 rounded-xl p-4 transition-all hover:shadow-lg hover:shadow-purple-500/10"
-                                    >
-                                        <div className="p-3 bg-white/5 rounded-lg text-neutral-300 group-hover:text-white group-hover:bg-blue-500/20 transition-colors">
-                                            <Icon size={24} />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <h5 className="text-white font-medium">{social.platform}</h5>
-                                            <p className="text-sm text-neutral-500 truncate group-hover:text-neutral-400 transition-colors">{social.url}</p>
-                                        </div>
-                                        <button
-                                            onClick={() => handleRemoveSocial(social.id)}
-                                            className="p-2 text-neutral-500 hover:text-red-400 hover:bg-red-500/10 rounded-full transition-colors opacity-0 group-hover:opacity-100"
-                                            title="移除"
-                                        >
-                                            <Trash2 size={20} />
-                                        </button>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {socials.map((social) => {
+                    const Icon = ICON_MAP[social.icon] || LinkIcon;
+                    return (
+                        <Card key={social.id} className="bg-white/5 border border-white/10">
+                            <CardBody className="flex flex-row items-center justify-between gap-4">
+                                <div className="flex items-center gap-4 overflow-hidden">
+                                    <div className="p-3 bg-white/10 rounded-full text-white shrink-0">
+                                        <Icon size={24} />
                                     </div>
-                                );
-                            })}
-
-                            {socials.length === 0 && (
-                                <div className="text-center py-12 text-neutral-500 border-2 border-dashed border-white/10 rounded-xl">
-                                    <p>目前沒有社群連結</p>
-                                    <p className="text-sm mt-2">請從左側新增連結</p>
+                                    <div className="min-w-0">
+                                        <h4 className="text-lg font-bold text-white truncate">{social.platform}</h4>
+                                        <a
+                                            href={social.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-sm text-primary truncate block hover:underline"
+                                        >
+                                            {social.url}
+                                        </a>
+                                    </div>
                                 </div>
-                            )}
-                        </div>
+                                <div className="flex flex-col gap-1 shrink-0">
+                                    <Button isIconOnly size="sm" variant="light" onPress={() => handleEdit(social)}>
+                                        <Edit2 size={16} />
+                                    </Button>
+                                    <Button isIconOnly size="sm" color="danger" variant="light" onPress={() => handleDelete(social.id)}>
+                                        <Trash2 size={16} />
+                                    </Button>
+                                </div>
+                            </CardBody>
+                        </Card>
+                    );
+                })}
+
+                {socials.length === 0 && (
+                    <div className="col-span-full text-center py-12 text-default-500 bg-white/5 rounded-xl border border-white/10 border-dashed">
+                        <LinkIcon size={48} className="mx-auto mb-4 opacity-50" />
+                        <p>No social links added yet.</p>
+                        <Button variant="light" color="primary" onPress={handleCreate} className="mt-2">
+                            Add your first link
+                        </Button>
                     </div>
-                </div>
+                )}
             </div>
+
+            {/* Edit/Create Modal */}
+            <Modal
+                isOpen={isOpen}
+                onOpenChange={onOpenChange}
+                backdrop="blur"
+            >
+                <ModalContent>
+                    {(onClose) => (
+                        <>
+                            <ModalHeader>{currentSocial.id ? 'Edit Link' : 'New Link'}</ModalHeader>
+                            <ModalBody>
+                                <div className="flex gap-4">
+                                    <div className="shrink-0">
+                                        <label className="block text-small font-medium text-default-500 mb-2">Icon</label>
+                                        <Popover placement="bottom" showArrow offset={10}>
+                                            <PopoverTrigger>
+                                                <Button
+                                                    className="h-14 w-14"
+                                                    variant="bordered"
+                                                >
+                                                    {ICON_MAP[currentSocial.icon || 'Link'] ? (
+                                                        (() => {
+                                                            const Icon = ICON_MAP[currentSocial.icon || 'Link'];
+                                                            return <Icon size={24} />;
+                                                        })()
+                                                    ) : <LinkIcon size={24} />}
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-[260px] p-4">
+                                                <div className="grid grid-cols-4 gap-2">
+                                                    {AVAILABLE_ICONS.map(iconName => {
+                                                        const Icon = ICON_MAP[iconName];
+                                                        return (
+                                                            <Button
+                                                                key={iconName}
+                                                                isIconOnly
+                                                                variant={currentSocial.icon === iconName ? "solid" : "light"}
+                                                                color={currentSocial.icon === iconName ? "primary" : "default"}
+                                                                onPress={() => setCurrentSocial({ ...currentSocial, icon: iconName })}
+                                                                title={iconName}
+                                                            >
+                                                                <Icon size={20} />
+                                                            </Button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </PopoverContent>
+                                        </Popover>
+                                    </div>
+                                    <div className="flex-1 space-y-4">
+                                        <Input
+                                            label="Platform"
+                                            placeholder="e.g. GitHub"
+                                            value={currentSocial.platform || ''}
+                                            onValueChange={val => setCurrentSocial({ ...currentSocial, platform: val })}
+                                            variant="bordered"
+                                        />
+                                        <Input
+                                            label="URL"
+                                            placeholder="https://..."
+                                            value={currentSocial.url || ''}
+                                            onValueChange={val => setCurrentSocial({ ...currentSocial, url: val })}
+                                            variant="bordered"
+                                        />
+                                    </div>
+                                </div>
+                            </ModalBody>
+                            <ModalFooter>
+                                <Button variant="flat" color="danger" onPress={onClose}>
+                                    Cancel
+                                </Button>
+                                <Button
+                                    color="primary"
+                                    onPress={() => handleSave(onClose)}
+                                    isLoading={saving}
+                                >
+                                    Save
+                                </Button>
+                            </ModalFooter>
+                        </>
+                    )}
+                </ModalContent>
+            </Modal>
         </div>
     );
 }

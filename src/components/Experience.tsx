@@ -13,7 +13,7 @@ export default function Experience() {
         const fetchExperiences = async () => {
             try {
                 const { data, error } = await supabase
-                    .from('experiences')
+                    .from('experience')
                     .select('*')
                     .order('display_order', { ascending: true });
 
@@ -58,7 +58,7 @@ export default function Experience() {
                             <div className={styles.timelineContent}>
                                 <div className={styles.card}>
                                     <span className={styles.period}>{exp.period}</span>
-                                    <h3 className={styles.role}>{exp.role}</h3>
+                                    <h3 className={styles.role}>{exp.position}</h3>
                                     <h4 className={styles.company}>{exp.company}</h4>
                                     <p className={styles.description}>{exp.description}</p>
                                     <div className={styles.skills}>

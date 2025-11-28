@@ -3,12 +3,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import {
-    Table,
-    TableHeader,
-    TableColumn,
-    TableBody,
-    TableRow,
-    TableCell,
     Input,
     Button,
     Textarea,
@@ -16,7 +10,6 @@ import {
     Card,
     CardBody,
     CardHeader,
-    Image as NextUIImage,
     Tooltip,
     Select,
     SelectItem,
@@ -36,8 +29,8 @@ interface Project {
     description: string;
     images: string[];
     tags: string[];
-    demo_link?: string;
-    github_link?: string;
+    demo_url?: string;
+    github_url?: string;
     category?: string;
     created_at?: string;
 }
@@ -78,7 +71,7 @@ export default function ProjectsTab() {
             description: '',
             images: [],
             tags: [],
-            category: 'Frontend'
+            category: '前端'
         });
         onOpen();
     };
@@ -106,10 +99,10 @@ export default function ProjectsTab() {
             const projectData = {
                 title: currentProject.title,
                 description: currentProject.description,
-                images: currentProject.images,
-                tags: currentProject.tags,
-                demo_link: currentProject.demo_link,
-                github_link: currentProject.github_link,
+                images: currentProject.images || [],
+                tags: currentProject.tags || [],
+                demo_url: currentProject.demo_url,
+                github_url: currentProject.github_url,
                 category: currentProject.category,
                 updated_at: new Date().toISOString(),
             };
@@ -129,9 +122,9 @@ export default function ProjectsTab() {
 
             await fetchProjects();
             onClose();
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error saving project:', error);
-            alert('Failed to save project');
+            alert(`Failed to save project: ${error.message}`);
         } finally {
             setSaving(false);
         }
@@ -298,11 +291,8 @@ export default function ProjectsTab() {
                                             onChange={(e) => setCurrentProject({ ...currentProject, category: e.target.value })}
                                             variant="bordered"
                                         >
-                                            <SelectItem key="Frontend" value="Frontend">Frontend</SelectItem>
-                                            <SelectItem key="Backend" value="Backend">Backend</SelectItem>
-                                            <SelectItem key="Fullstack" value="Fullstack">Fullstack</SelectItem>
-                                            <SelectItem key="Mobile" value="Mobile">Mobile</SelectItem>
-                                            <SelectItem key="UI/UX" value="UI/UX">UI/UX</SelectItem>
+                                            <SelectItem key="前端" value="前端">前端</SelectItem>
+                                            <SelectItem key="UX" value="UX">UX</SelectItem>
                                         </Select>
                                         <Textarea
                                             label="Description"
@@ -334,16 +324,16 @@ export default function ProjectsTab() {
                                                 label="Demo Link"
                                                 placeholder="https://..."
                                                 startContent={<ExternalLink size={16} />}
-                                                value={currentProject.demo_link || ''}
-                                                onValueChange={val => setCurrentProject({ ...currentProject, demo_link: val })}
+                                                value={currentProject.demo_url || ''}
+                                                onValueChange={val => setCurrentProject({ ...currentProject, demo_url: val })}
                                                 variant="bordered"
                                             />
                                             <Input
                                                 label="GitHub Link"
                                                 placeholder="https://..."
                                                 startContent={<Github size={16} />}
-                                                value={currentProject.github_link || ''}
-                                                onValueChange={val => setCurrentProject({ ...currentProject, github_link: val })}
+                                                value={currentProject.github_url || ''}
+                                                onValueChange={val => setCurrentProject({ ...currentProject, github_url: val })}
                                                 variant="bordered"
                                             />
                                         </div>
