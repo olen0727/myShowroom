@@ -28,6 +28,14 @@ const experiences = [
         period: "2018 - 2019",
         description: "協助開發公司內部管理系統，參與 API 串接與介面優化。在敏捷開發流程中學習現代化前端技術。",
         skills: ["JavaScript", "HTML/CSS", "Git", "REST API"]
+    },
+    {
+        id: 4,
+        role: "全端工程師",
+        company: "Innovation Labs",
+        period: "2022 - Present",
+        description: "負責開發創新產品的前後端架構，使用微服務架構提升系統可擴展性。帶領跨職能團隊完成多個 MVP 專案。",
+        skills: ["Node.js", "React", "Docker", "AWS", "MongoDB"]
     }
 ];
 
