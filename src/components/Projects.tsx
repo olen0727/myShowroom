@@ -296,18 +296,7 @@ export default function Projects() {
     return (
         <section id="projects" className={styles.section} ref={sectionRef}>
             <div className={styles.background}>
-                {/* Generate random matrix columns */}
-                {[...Array(20)].map((_, i) => (
-                    <div
-                        key={i}
-                        className={styles.matrixColumn}
-                        style={{
-                            left: `${Math.random() * 100}%`,
-                            animationDuration: `${Math.random() * 2 + 4}s`,
-                            animationDelay: `${Math.random() * 5}s`
-                        }}
-                    />
-                ))}
+                {/* 背景容器 */}
             </div>
 
             {/* Sidebar Navigation */}
