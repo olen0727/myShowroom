@@ -22,6 +22,7 @@ import {
 import {
     Plus, Trash2, Edit2, Link as LinkIcon, Github, Linkedin, Twitter, Facebook, Instagram, Youtube, Mail, Globe
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 // Icon Map
 const ICON_MAP: Record<string, any> = {
@@ -87,9 +88,10 @@ export default function SocialsTab() {
 
             if (error) throw error;
             setSocials(socials.filter(s => s.id !== id));
+            toast.success('Social link deleted successfully');
         } catch (error) {
             console.error('Error deleting social link:', error);
-            alert('Failed to delete link');
+            toast.error('Failed to delete link');
         }
     };
 
@@ -119,9 +121,10 @@ export default function SocialsTab() {
 
             await fetchSocials();
             onClose();
+            toast.success('Social link saved successfully');
         } catch (error: any) {
             console.error('Error saving social link:', error);
-            alert(`Failed to save: ${error.message}`);
+            toast.error(`Failed to save: ${error.message}`);
         } finally {
             setSaving(false);
         }

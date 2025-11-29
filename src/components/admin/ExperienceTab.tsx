@@ -19,6 +19,7 @@ import {
     Chip
 } from "@nextui-org/react";
 import { Plus, Trash2, Edit2, Briefcase, Calendar, Building } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Experience {
     id: string;
@@ -90,9 +91,10 @@ export default function ExperienceTab() {
 
             if (error) throw error;
             setExperiences(experiences.filter(e => e.id !== id));
+            toast.success('Experience deleted successfully');
         } catch (error) {
             console.error('Error deleting experience:', error);
-            alert('Failed to delete experience');
+            toast.error('Failed to delete experience');
         }
     };
 
@@ -132,9 +134,10 @@ export default function ExperienceTab() {
 
             await fetchExperiences();
             onClose();
+            toast.success('Experience saved successfully');
         } catch (error: any) {
             console.error('Error saving experience:', error);
-            alert(`Failed to save: ${error.message}`);
+            toast.error(`Failed to save: ${error.message}`);
         } finally {
             setSaving(false);
         }

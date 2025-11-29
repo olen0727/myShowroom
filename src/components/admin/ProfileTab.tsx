@@ -15,6 +15,7 @@ import {
     Spacer
 } from "@nextui-org/react";
 import { Save, Plus, X, Upload } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Profile {
     id: string;
@@ -77,10 +78,10 @@ export default function ProfileTab() {
                 });
 
             if (error) throw error;
-            alert('Profile updated successfully');
+            toast.success('Profile updated successfully');
         } catch (error: any) {
             console.error('Error saving profile:', error);
-            alert(`Failed to save profile: ${error.message || error.details || 'Unknown error'}`);
+            toast.error(`Failed to save profile: ${error.message || error.details || 'Unknown error'}`);
         } finally {
             setSaving(false);
         }
@@ -89,7 +90,7 @@ export default function ProfileTab() {
     const handleAddRole = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && roleInput.trim()) {
             e.preventDefault();
-            const newRoles = [...(profile.hero_roles || []), roleInput.trim()];
+            const newRoles = [...(profile.hero_roles || []), `${roleInput.trim()}|${roleColor}`];
             setProfile({ ...profile, hero_roles: newRoles });
             setRoleInput("");
         }

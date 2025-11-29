@@ -21,6 +21,7 @@ import {
     useDisclosure
 } from "@nextui-org/react";
 import { Plus, Edit2, Trash2, Search, ExternalLink, Github, GripVertical } from 'lucide-react';
+import { toast } from 'sonner';
 import Image from 'next/image';
 import {
     DndContext,
@@ -247,9 +248,10 @@ export default function ProjectsTab() {
 
             await fetchProjects();
             onClose();
+            toast.success('Project saved successfully');
         } catch (error: any) {
             console.error('Error saving project:', error);
-            alert(`Failed to save project: ${error.message}`);
+            toast.error(`Failed to save project: ${error.message}`);
         } finally {
             setSaving(false);
         }
@@ -284,7 +286,7 @@ export default function ProjectsTab() {
             setCurrentProject(prev => ({ ...prev, images: newImages }));
         } catch (error: any) {
             console.error('Error uploading image:', error);
-            alert(`Image upload failed: ${error.message || 'Unknown error'}`);
+            toast.error(`Image upload failed: ${error.message || 'Unknown error'}`);
         } finally {
             setUploading(false);
         }

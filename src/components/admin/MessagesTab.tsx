@@ -13,6 +13,7 @@ import {
     Spinner
 } from "@nextui-org/react";
 import { Trash2, Mail, CheckCircle, Clock } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Message {
     id: string;
@@ -58,8 +59,10 @@ export default function MessagesTab() {
 
             if (error) throw error;
             setMessages(messages.map(m => m.id === id ? { ...m, read: !currentStatus } : m));
+            toast.success(`Message marked as ${!currentStatus ? 'read' : 'unread'}`);
         } catch (error) {
             console.error('Error updating message:', error);
+            toast.error('Failed to update message');
         }
     };
 
@@ -74,8 +77,10 @@ export default function MessagesTab() {
 
             if (error) throw error;
             setMessages(messages.filter(m => m.id !== id));
+            toast.success('Message deleted successfully');
         } catch (error) {
             console.error('Error deleting message:', error);
+            toast.error('Failed to delete message');
         }
     };
 

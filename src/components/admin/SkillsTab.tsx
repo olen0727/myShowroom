@@ -27,6 +27,7 @@ import {
     Server, Smartphone, Globe, Cpu, Cloud, GitBranch, Box, Users, CheckCircle, Search,
     Lock, Wifi, Monitor, PenTool, Activity, Command, Hash, Link as LinkIcon
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 // Icon Map for dynamic rendering in Admin
 const ICON_MAP: Record<string, any> = {
@@ -145,7 +146,7 @@ export default function SkillsTab() {
         if (isAddingNew) {
             // Add New
             if (categories.some(c => c.name === editCatName.trim())) {
-                alert('Category name already exists');
+                toast.warning('Category name already exists');
                 return;
             }
             newCats.push({ name: editCatName.trim(), icon: editCatIcon });
@@ -207,7 +208,7 @@ export default function SkillsTab() {
 
             if (profileError) {
                 console.warn('Failed to save categories to profile.', profileError);
-                alert(`Warning: Could not save categories. Error: ${profileError.message}`);
+                toast.warning(`Warning: Could not save categories. Error: ${profileError.message}`);
             }
 
             // 2. Save Skills (This will also save the updated category names for skills)
@@ -228,10 +229,10 @@ export default function SkillsTab() {
             }
 
             await fetchData();
-            alert('Skills and Categories updated successfully');
+            toast.success('Skills and Categories updated successfully');
         } catch (error: any) {
             console.error('Error saving:', error);
-            alert(`Failed to save changes: ${error.message || 'Unknown error'}`);
+            toast.error(`Failed to save changes: ${error.message || 'Unknown error'}`);
         } finally {
             setSaving(false);
         }
