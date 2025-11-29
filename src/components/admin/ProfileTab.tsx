@@ -36,6 +36,7 @@ export default function ProfileTab() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [roleInput, setRoleInput] = useState("");
+    const [roleColor, setRoleColor] = useState("#3b82f6");
 
     useEffect(() => {
         fetchProfile();
@@ -206,26 +207,56 @@ export default function ProfileTab() {
                             </div>
 
                             <div className="space-y-2">
-                                <Input
-                                    label="Rotating Roles"
-                                    placeholder="Type and press Enter (e.g. Frontend Dev)"
-                                    value={roleInput}
-                                    onValueChange={setRoleInput}
-                                    onKeyDown={handleAddRole}
-                                    variant="bordered"
-                                    endContent={<Plus size={18} className="text-default-400" />}
-                                />
+                                <div className="flex gap-2">
+                                    <Input
+                                        label="Rotating Roles"
+                                        placeholder="Type and press Enter (e.g. Frontend Dev)"
+                                        value={roleInput}
+                                        onValueChange={setRoleInput}
+                                        onKeyDown={handleAddRole}
+                                        variant="bordered"
+                                        className="flex-1"
+                                    />
+                                    <div className="flex flex-col gap-1">
+                                        <label className="text-tiny text-default-500">Color</label>
+                                        <input
+                                            type="color"
+                                            value={roleColor}
+                                            onChange={(e) => setRoleColor(e.target.value)}
+                                            className="h-10 w-14 rounded cursor-pointer border border-white/20 bg-transparent p-1"
+                                        />
+                                    </div>
+                                    <Button isIconOnly className="mt-auto h-10" onPress={() => {
+                                        if (roleInput.trim()) {
+                                            const newRoles = [...(profile.hero_roles || []), `${roleInput.trim()}|${roleColor}`];
+                                            setProfile({ ...profile, hero_roles: newRoles });
+                                            setRoleInput("");
+                                        }
+                                    }}>
+                                        <Plus size={18} />
+                                    </Button>
+                                </div>
                                 <div className="flex flex-wrap gap-2">
-                                    {profile.hero_roles?.map((role, idx) => (
-                                        <Chip
-                                            key={idx}
-                                            onClose={() => removeRole(role)}
-                                            variant="flat"
-                                            color="secondary"
-                                        >
-                                            {role}
-                                        </Chip>
-                                    ))}
+                                    {profile.hero_roles?.map((role, idx) => {
+                                        const [text, color] = role.split('|');
+                                        return (
+                                            <Chip
+                                                key={idx}
+                                                onClose={() => removeRole(role)}
+                                                variant="flat"
+                                                className="border"
+                                                style={{
+                                                    borderColor: color || 'var(--nextui-colors-secondary)',
+                                                    color: color || 'inherit'
+                                                }}
+                                            >
+                                                <span className="flex items-center gap-2">
+                                                    {color && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />}
+                                                    {text}
+                                                </span>
+                                            </Chip>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         </CardBody>

@@ -71,27 +71,36 @@ export default function Hero() {
                         display: 'inline-flex',
                         position: 'relative',
                         width: 'auto',
+                        fontSize: '1.5em',
                         minWidth: '5.5em',
-                        height: '1.6em',
+                        height: '1.4em',
                         verticalAlign: 'bottom',
                         justifyContent: 'center',
                         marginLeft: '0.1em',
                         marginRight: '0.1em',
-                        color: 'var(--primary)',
                         fontWeight: 'bold',
                         overflow: 'hidden'
                     }}>
                         <AnimatePresence mode="wait">
-                            <motion.span
-                                key={index}
-                                initial={{ y: 20, opacity: 0 }}
-                                animate={{ y: 0, opacity: 1 }}
-                                exit={{ y: -20, opacity: 0 }}
-                                transition={{ duration: 0.5, ease: "easeInOut" }}
-                                style={{ position: 'absolute', whiteSpace: 'nowrap' }}
-                            >
-                                {roles[index]}
-                            </motion.span>
+                            {(() => {
+                                const currentRoleStr = roles[index] || '';
+                                const [text, color] = currentRoleStr.includes('|')
+                                    ? currentRoleStr.split('|')
+                                    : [currentRoleStr, null];
+
+                                return (
+                                    <motion.span
+                                        key={index}
+                                        initial={{ y: 20, opacity: 0 }}
+                                        animate={{ y: 0, opacity: 1, color: color || 'var(--primary)' }}
+                                        exit={{ y: -20, opacity: 0 }}
+                                        transition={{ duration: 0.5, ease: "easeInOut" }}
+                                        style={{ position: 'absolute', whiteSpace: 'nowrap' }}
+                                    >
+                                        {text}
+                                    </motion.span>
+                                );
+                            })()}
                         </AnimatePresence>
                     </span>
                     {profile?.hero_subtitle_suffix || '，熱衷於構建美觀、實用且具擴展性的網頁應用程式。'}
