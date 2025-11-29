@@ -28,7 +28,9 @@ export default function Experience() {
         fetchExperiences();
     }, []);
 
-    if (loading) return null;
+    if (loading) {
+        return <section className={styles.section} style={{ minHeight: '50vh' }} />;
+    }
 
     return (
         <section id="experience" className={styles.section}>

@@ -175,7 +175,9 @@ export default function Projects() {
         }
     };
 
-    if (loading) return null;
+    if (loading) {
+        return <section className={styles.section} style={{ minHeight: '100vh' }} />;
+    }
 
     return (
         <section id="projects" className={styles.section} ref={sectionRef}>
