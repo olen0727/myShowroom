@@ -25,7 +25,7 @@ import {
 import {
     Plus, X, Code2, Database, Terminal, Layers, Settings, Trash2, ArrowUp, ArrowDown, Edit2,
     Server, Smartphone, Globe, Cpu, Cloud, GitBranch, Box, Users, CheckCircle, Search,
-    Lock, Wifi, Monitor, PenTool, Activity, Command, Hash, Link as LinkIcon
+    Lock, Wifi, Monitor, PenTool, Activity, Command, Hash, Link as LinkIcon, GripVertical
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -42,7 +42,8 @@ import {
     SortableContext,
     sortableKeyboardCoordinates,
     useSortable,
-    rectSortingStrategy
+    rectSortingStrategy,
+    verticalListSortingStrategy
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
@@ -110,6 +111,57 @@ function SortableSkill({ skill, onRemove }: { skill: Skill; onRemove: (id: strin
     );
 }
 
+// Sortable Category Card Component
+function SortableCategoryCard({ category, children, onEdit }: { category: Category; children: React.ReactNode; onEdit: () => void }) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id: `cat-${category.name}` });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        zIndex: isDragging ? 10 : 1,
+        position: 'relative' as 'relative', // Explicitly cast to valid CSS position
+    };
+
+    const Icon = ICON_MAP[category.icon] || Code2;
+
+    return (
+        <div ref={setNodeRef} style={style}>
+            <Card className="bg-white/5 border border-white/10">
+                <CardHeader className="flex gap-3 justify-between group">
+                    <div className="flex gap-3 items-center">
+                        <div
+                            className="p-2 text-default-400 cursor-grab active:cursor-grabbing hover:text-white transition-colors"
+                            {...attributes}
+                            {...listeners}
+                        >
+                            <GripVertical size={20} />
+                        </div>
+                        <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                            <Icon size={20} />
+                        </div>
+                        <h4 className="text-lg font-bold text-white">{category.name}</h4>
+                    </div>
+                    <Button isIconOnly size="sm" variant="light" onPress={onEdit} className="opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Edit2 size={16} />
+                    </Button>
+                </CardHeader>
+                <Divider className="bg-white/10" />
+                <CardBody>
+                    {children}
+                </CardBody>
+            </Card>
+        </div>
+    );
+}
+
 export default function SkillsTab() {
     const [skills, setSkills] = useState<Skill[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
@@ -153,7 +205,6 @@ export default function SkillsTab() {
 
             if (skillsRes.error) throw skillsRes.error;
 
-            // If display_order is missing, fallback to category order or just index
             const fetchedSkills = skillsRes.data || [];
             setSkills(fetchedSkills);
 
@@ -181,7 +232,7 @@ export default function SkillsTab() {
             id: Math.random().toString(36).substr(2, 9),
             name: newSkill.trim(),
             category: selectedCategory,
-            display_order: skills.length // Append to end
+            display_order: skills.length
         };
 
         setSkills([...skills, skill]);
@@ -253,41 +304,49 @@ export default function SkillsTab() {
         }
     };
 
-    const moveCategory = (index: number, direction: 'up' | 'down') => {
-        const newCats = [...categories];
-        if (direction === 'up' && index > 0) {
-            [newCats[index], newCats[index - 1]] = [newCats[index - 1], newCats[index]];
-        } else if (direction === 'down' && index < newCats.length - 1) {
-            [newCats[index], newCats[index + 1]] = [newCats[index + 1], newCats[index]];
-        }
-        setCategories(newCats);
-    };
-
     // --- Drag and Drop Handler ---
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
 
         if (!over) return;
 
-        if (active.id !== over.id) {
-            setSkills((items) => {
-                const oldIndex = items.findIndex((item) => item.id === active.id);
-                const newIndex = items.findIndex((item) => item.id === over.id);
+        const activeId = active.id.toString();
+        const overId = over.id.toString();
 
-                if (oldIndex === -1 || newIndex === -1) return items;
+        // 1. Handle Category Sorting
+        if (activeId.startsWith('cat-') && overId.startsWith('cat-')) {
+            if (activeId !== overId) {
+                setCategories((items) => {
+                    const oldIndex = items.findIndex((item) => `cat-${item.name}` === activeId);
+                    const newIndex = items.findIndex((item) => `cat-${item.name}` === overId);
+                    return arrayMove(items, oldIndex, newIndex);
+                });
+            }
+            return;
+        }
 
-                const newItems = [...items];
-                const activeItem = { ...newItems[oldIndex] };
-                const overItem = newItems[newIndex];
+        // 2. Handle Skill Sorting
+        if (!activeId.startsWith('cat-') && !overId.startsWith('cat-')) {
+            if (activeId !== overId) {
+                setSkills((items) => {
+                    const oldIndex = items.findIndex((item) => item.id === activeId);
+                    const newIndex = items.findIndex((item) => item.id === overId);
 
-                // If moving to a different category (based on the item we dropped over)
-                if (activeItem.category !== overItem.category) {
-                    activeItem.category = overItem.category;
-                    newItems[oldIndex] = activeItem;
-                }
+                    if (oldIndex === -1 || newIndex === -1) return items;
 
-                return arrayMove(newItems, oldIndex, newIndex);
-            });
+                    const newItems = [...items];
+                    const activeItem = { ...newItems[oldIndex] };
+                    const overItem = newItems[newIndex];
+
+                    // If moving to a different category (based on the item we dropped over)
+                    if (activeItem.category !== overItem.category) {
+                        activeItem.category = overItem.category;
+                        newItems[oldIndex] = activeItem;
+                    }
+
+                    return arrayMove(newItems, oldIndex, newIndex);
+                });
+            }
         }
     };
 
@@ -415,47 +474,48 @@ export default function SkillsTab() {
                 </div>
 
                 {/* Right Column: Skills List */}
-                <div className="lg:col-span-2 space-y-6">
+                <div className="lg:col-span-2">
                     <DndContext
                         sensors={sensors}
                         collisionDetection={closestCenter}
                         onDragEnd={handleDragEnd}
                     >
-                        {categories.map(category => {
-                            const categorySkills = skills.filter(s => s.category === category.name);
-                            const Icon = ICON_MAP[category.icon] || Code2;
+                        <SortableContext
+                            items={categories.map(c => `cat-${c.name}`)}
+                            strategy={verticalListSortingStrategy}
+                        >
+                            <div className="space-y-6">
+                                {categories.map(category => {
+                                    const categorySkills = skills.filter(s => s.category === category.name);
 
-                            return (
-                                <Card key={category.name} className="bg-white/5 border border-white/10">
-                                    <CardHeader className="flex gap-3">
-                                        <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                                            <Icon size={20} />
-                                        </div>
-                                        <h4 className="text-lg font-bold text-white">{category.name}</h4>
-                                    </CardHeader>
-                                    <Divider className="bg-white/10" />
-                                    <CardBody>
-                                        <SortableContext
-                                            items={categorySkills.map(s => s.id)}
-                                            strategy={rectSortingStrategy}
+                                    return (
+                                        <SortableCategoryCard
+                                            key={category.name}
+                                            category={category}
+                                            onEdit={() => startEditCategory(categories.findIndex(c => c.name === category.name))}
                                         >
-                                            <div className="flex flex-wrap gap-3">
-                                                {categorySkills.map(skill => (
-                                                    <SortableSkill
-                                                        key={skill.id}
-                                                        skill={skill}
-                                                        onRemove={handleRemoveSkill}
-                                                    />
-                                                ))}
-                                                {categorySkills.length === 0 && (
-                                                    <p className="text-default-400 text-sm italic">No skills in this category yet.</p>
-                                                )}
-                                            </div>
-                                        </SortableContext>
-                                    </CardBody>
-                                </Card>
-                            );
-                        })}
+                                            <SortableContext
+                                                items={categorySkills.map(s => s.id)}
+                                                strategy={rectSortingStrategy}
+                                            >
+                                                <div className="flex flex-wrap gap-3">
+                                                    {categorySkills.map(skill => (
+                                                        <SortableSkill
+                                                            key={skill.id}
+                                                            skill={skill}
+                                                            onRemove={handleRemoveSkill}
+                                                        />
+                                                    ))}
+                                                    {categorySkills.length === 0 && (
+                                                        <p className="text-default-400 text-sm italic">No skills in this category yet.</p>
+                                                    )}
+                                                </div>
+                                            </SortableContext>
+                                        </SortableCategoryCard>
+                                    );
+                                })}
+                            </div>
+                        </SortableContext>
                     </DndContext>
                 </div>
             </div>
@@ -560,12 +620,6 @@ export default function SkillsTab() {
                                                 <div className="flex gap-1 opacity-50 group-hover:opacity-100 transition-opacity">
                                                     <Button isIconOnly size="sm" variant="light" onPress={() => startEditCategory(idx)}>
                                                         <Edit2 size={16} />
-                                                    </Button>
-                                                    <Button isIconOnly size="sm" variant="light" onPress={() => moveCategory(idx, 'up')} isDisabled={idx === 0}>
-                                                        <ArrowUp size={16} />
-                                                    </Button>
-                                                    <Button isIconOnly size="sm" variant="light" onPress={() => moveCategory(idx, 'down')} isDisabled={idx === categories.length - 1}>
-                                                        <ArrowDown size={16} />
                                                     </Button>
                                                     <Button isIconOnly size="sm" color="danger" variant="light" onPress={() => handleRemoveCategory(cat.name)}>
                                                         <Trash2 size={16} />
