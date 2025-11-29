@@ -15,6 +15,23 @@
     align-items: center;
     gap: 1.5rem;
 }
+.footer {
+    background: rgba(10, 10, 10, 0.5);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 3rem 0;
+    margin-top: 5rem;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+}
 
 .socials {
     display: flex;
@@ -22,7 +39,7 @@
 }
 
 .socialLink {
-    color: var(--secondary);
+    color: rgba(255, 255, 255, 0.7);
     transition: all 0.2s;
     padding: 0.5rem;
     border-radius: 50%;
@@ -30,7 +47,7 @@
 }
 
 .socialLink:hover {
-    color: var(--foreground);
+    color: #ffffff;
     background: rgba(255, 255, 255, 0.1);
     transform: translateY(-2px);
 }

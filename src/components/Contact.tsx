@@ -18,7 +18,7 @@ export default function Contact() {
         const data = {
             name: formData.get('name') as string,
             email: formData.get('email') as string,
-            content: formData.get('message') as string,
+            message: formData.get('message') as string,
         };
 
         try {

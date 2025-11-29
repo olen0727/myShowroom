@@ -20,13 +20,13 @@ import {
     PopoverContent
 } from "@nextui-org/react";
 import {
-    Plus, Trash2, Edit2, Link as LinkIcon, Github, Linkedin, Twitter, Facebook, Instagram, Youtube, Mail, Globe
+    Plus, Trash2, Edit2, Link as LinkIcon, Github, Linkedin, Twitter, Facebook, Instagram, Youtube, Mail, Globe, Twitch
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 // Icon Map
 const ICON_MAP: Record<string, any> = {
-    Github, Linkedin, Twitter, Facebook, Instagram, Youtube, Mail, Globe, Link: LinkIcon
+    Github, Linkedin, Twitter, Facebook, Instagram, Youtube, Mail, Globe, Twitch, Link: LinkIcon
 };
 const AVAILABLE_ICONS = Object.keys(ICON_MAP);
 

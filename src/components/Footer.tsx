@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Github, Linkedin, Mail, Facebook, Instagram, Twitter, Globe, Youtube, Twitch } from 'lucide-react';
+import { Github, Linkedin, Mail, Facebook, Instagram, Twitter, Globe, Youtube, Twitch, Link as LinkIcon } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import styles from './Footer.module.css';
 
 const ICON_MAP: Record<string, any> = {
-    Github, Linkedin, Mail, Facebook, Instagram, Twitter, Globe, Youtube, Twitch
+    Github, Linkedin, Mail, Facebook, Instagram, Twitter, Globe, Youtube, Twitch, Link: LinkIcon
 };
 
 export default function Footer() {
@@ -18,7 +18,6 @@ export default function Footer() {
                 const { data } = await supabase
                     .from('social_links')
                     .select('*')
-                    .eq('is_active', true)
                     .order('display_order', { ascending: true });
 
                 if (data) setSocials(data);
@@ -34,7 +33,9 @@ export default function Footer() {
             <div className={styles.container}>
                 <div className={styles.socials}>
                     {socials.map((social) => {
-                        const Icon = ICON_MAP[social.icon] || Globe;
+                        // Case-insensitive lookup
+                        const iconKey = Object.keys(ICON_MAP).find(k => k.toLowerCase() === (social.icon || '').toLowerCase());
+                        const Icon = ICON_MAP[iconKey || ''] || ICON_MAP[social.icon] || Globe;
                         return (
                             <a
                                 key={social.id}
