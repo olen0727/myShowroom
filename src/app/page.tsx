@@ -9,6 +9,9 @@ import Contact from '@/components/Contact';
 import Experience from '@/components/Experience';
 import LoadingScreen from '@/components/LoadingScreen';
 
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
+
 export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
 
@@ -36,11 +39,13 @@ export default function Home() {
         {isLoading && <LoadingScreen />}
       </AnimatePresence>
 
+      <Navbar />
       <Hero />
       <About />
       <Projects />
       <Experience />
       <Contact />
+      <Footer />
     </main>
   );
 }

@@ -112,10 +112,17 @@ export default function Hero() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.4, ease: "easeOut" }}
                 >
-                    <Link href="#projects" className={styles.primaryBtn}>
+                    <a
+                        href="#projects"
+                        className={styles.primaryBtn}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            document.getElementById('projects')?.scrollIntoView({ behavior: 'smooth' });
+                        }}
+                    >
                         查看作品
                         <ArrowRight size={20} style={{ display: 'inline', marginLeft: '8px', verticalAlign: 'middle' }} />
-                    </Link>
+                    </a>
                     {profile?.resume_url && (
                         <a href={profile.resume_url} className={styles.secondaryBtn} target="_blank" rel="noopener noreferrer">
                             下載履歷

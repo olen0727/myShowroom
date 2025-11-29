@@ -40,9 +40,17 @@ export default function Navbar() {
                 {/* Desktop Menu */}
                 <div className={styles.desktopMenu}>
                     {navLinks.map((link) => (
-                        <Link key={link.name} href={link.href} className={styles.link}>
+                        <a
+                            key={link.name}
+                            href={link.href}
+                            className={styles.link}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                document.getElementById(link.href.replace('#', ''))?.scrollIntoView({ behavior: 'smooth' });
+                            }}
+                        >
                             {link.name}
-                        </Link>
+                        </a>
                     ))}
                 </div>
 
@@ -66,14 +74,18 @@ export default function Navbar() {
                         className={styles.mobileMenu}
                     >
                         {navLinks.map((link) => (
-                            <Link
+                            <a
                                 key={link.name}
                                 href={link.href}
                                 className={styles.mobileLink}
-                                onClick={() => setIsMobileMenuOpen(false)}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    document.getElementById(link.href.replace('#', ''))?.scrollIntoView({ behavior: 'smooth' });
+                                    setIsMobileMenuOpen(false);
+                                }}
                             >
                                 {link.name}
-                            </Link>
+                            </a>
                         ))}
                     </motion.div>
                 )}
