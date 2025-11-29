@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import {
     Tabs,
@@ -33,6 +33,11 @@ import SocialsTab from '@/components/admin/SocialsTab';
 export default function AdminDashboard() {
     const [loading, setLoading] = useState(true);
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const pathname = usePathname();
+
+    // Get current tab from URL or default to 'profile'
+    const currentTab = searchParams.get('tab') || 'profile';
 
     useEffect(() => {
         const checkUser = async () => {
@@ -54,6 +59,12 @@ export default function AdminDashboard() {
     const handleLogout = async () => {
         await supabase.auth.signOut();
         router.push('/admin/login');
+    };
+
+    const handleTabChange = (key: React.Key) => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('tab', key as string);
+        router.replace(`${pathname}?${params.toString()}`);
     };
 
     if (loading) {
@@ -93,6 +104,8 @@ export default function AdminDashboard() {
                 <div className="flex w-full flex-col">
                     <Tabs
                         aria-label="Admin Options"
+                        selectedKey={currentTab}
+                        onSelectionChange={handleTabChange}
                         color="primary"
                         variant="underlined"
                         classNames={{
