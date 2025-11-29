@@ -28,6 +28,23 @@ import {
     Lock, Wifi, Monitor, PenTool, Activity, Command, Hash, Link as LinkIcon
 } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    useSortable,
+    rectSortingStrategy
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 // Icon Map for dynamic rendering in Admin
 const ICON_MAP: Record<string, any> = {
@@ -57,6 +74,42 @@ const DEFAULT_CATEGORIES: Category[] = [
     { name: '其他技能', icon: 'Code2' }
 ];
 
+// Sortable Skill Chip Component
+function SortableSkill({ skill, onRemove }: { skill: Skill; onRemove: (id: string) => void }) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id: skill.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        cursor: 'grab',
+        touchAction: 'none'
+    };
+
+    return (
+        <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+            <Chip
+                onClose={() => onRemove(skill.id)}
+                variant="flat"
+                color="default"
+                classNames={{
+                    base: "bg-white/10 hover:bg-white/20 transition-colors border border-white/5",
+                    content: "text-white font-medium"
+                }}
+            >
+                {skill.name}
+            </Chip>
+        </div>
+    );
+}
+
 export default function SkillsTab() {
     const [skills, setSkills] = useState<Skill[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
@@ -72,6 +125,18 @@ export default function SkillsTab() {
     const [editCatIcon, setEditCatIcon] = useState('Code2');
     const [isAddingNew, setIsAddingNew] = useState(false);
 
+    // DnD Sensors
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
     useEffect(() => {
         fetchData();
     }, []);
@@ -82,12 +147,15 @@ export default function SkillsTab() {
             if (!user) return;
 
             const [skillsRes, profileRes] = await Promise.all([
-                supabase.from('skills').select('*').order('category'),
+                supabase.from('skills').select('*').order('display_order', { ascending: true }),
                 supabase.from('profile').select('skill_categories').eq('id', user.id).single()
             ]);
 
             if (skillsRes.error) throw skillsRes.error;
-            setSkills(skillsRes.data || []);
+
+            // If display_order is missing, fallback to category order or just index
+            const fetchedSkills = skillsRes.data || [];
+            setSkills(fetchedSkills);
 
             if (profileRes.data?.skill_categories && Array.isArray(profileRes.data.skill_categories)) {
                 setCategories(profileRes.data.skill_categories);
@@ -112,7 +180,8 @@ export default function SkillsTab() {
         const skill: Skill = {
             id: Math.random().toString(36).substr(2, 9),
             name: newSkill.trim(),
-            category: selectedCategory
+            category: selectedCategory,
+            display_order: skills.length // Append to end
         };
 
         setSkills([...skills, skill]);
@@ -194,6 +263,34 @@ export default function SkillsTab() {
         setCategories(newCats);
     };
 
+    // --- Drag and Drop Handler ---
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+
+        if (!over) return;
+
+        if (active.id !== over.id) {
+            setSkills((items) => {
+                const oldIndex = items.findIndex((item) => item.id === active.id);
+                const newIndex = items.findIndex((item) => item.id === over.id);
+
+                if (oldIndex === -1 || newIndex === -1) return items;
+
+                const newItems = [...items];
+                const activeItem = { ...newItems[oldIndex] };
+                const overItem = newItems[newIndex];
+
+                // If moving to a different category (based on the item we dropped over)
+                if (activeItem.category !== overItem.category) {
+                    activeItem.category = overItem.category;
+                    newItems[oldIndex] = activeItem;
+                }
+
+                return arrayMove(newItems, oldIndex, newIndex);
+            });
+        }
+    };
+
     const handleSave = async () => {
         setSaving(true);
         try {
@@ -219,7 +316,12 @@ export default function SkillsTab() {
 
             if (deleteError) throw deleteError;
 
-            const skillsToInsert = skills.map(({ id, ...rest }) => rest);
+            // Update display_order based on current array index
+            const skillsToInsert = skills.map(({ id, ...rest }, index) => ({
+                ...rest,
+                display_order: index
+            }));
+
             if (skillsToInsert.length > 0) {
                 const { error: insertError } = await supabase
                     .from('skills')
@@ -314,43 +416,47 @@ export default function SkillsTab() {
 
                 {/* Right Column: Skills List */}
                 <div className="lg:col-span-2 space-y-6">
-                    {categories.map(category => {
-                        const categorySkills = skills.filter(s => s.category === category.name);
-                        const Icon = ICON_MAP[category.icon] || Code2;
+                    <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                    >
+                        {categories.map(category => {
+                            const categorySkills = skills.filter(s => s.category === category.name);
+                            const Icon = ICON_MAP[category.icon] || Code2;
 
-                        return (
-                            <Card key={category.name} className="bg-white/5 border border-white/10">
-                                <CardHeader className="flex gap-3">
-                                    <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                                        <Icon size={20} />
-                                    </div>
-                                    <h4 className="text-lg font-bold text-white">{category.name}</h4>
-                                </CardHeader>
-                                <Divider className="bg-white/10" />
-                                <CardBody>
-                                    <div className="flex flex-wrap gap-3">
-                                        {categorySkills.map(skill => (
-                                            <Chip
-                                                key={skill.id}
-                                                onClose={() => handleRemoveSkill(skill.id)}
-                                                variant="flat"
-                                                color="default"
-                                                classNames={{
-                                                    base: "bg-white/10 hover:bg-white/20 transition-colors border border-white/5",
-                                                    content: "text-white font-medium"
-                                                }}
-                                            >
-                                                {skill.name}
-                                            </Chip>
-                                        ))}
-                                        {categorySkills.length === 0 && (
-                                            <p className="text-default-400 text-sm italic">No skills in this category yet.</p>
-                                        )}
-                                    </div>
-                                </CardBody>
-                            </Card>
-                        );
-                    })}
+                            return (
+                                <Card key={category.name} className="bg-white/5 border border-white/10">
+                                    <CardHeader className="flex gap-3">
+                                        <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                                            <Icon size={20} />
+                                        </div>
+                                        <h4 className="text-lg font-bold text-white">{category.name}</h4>
+                                    </CardHeader>
+                                    <Divider className="bg-white/10" />
+                                    <CardBody>
+                                        <SortableContext
+                                            items={categorySkills.map(s => s.id)}
+                                            strategy={rectSortingStrategy}
+                                        >
+                                            <div className="flex flex-wrap gap-3">
+                                                {categorySkills.map(skill => (
+                                                    <SortableSkill
+                                                        key={skill.id}
+                                                        skill={skill}
+                                                        onRemove={handleRemoveSkill}
+                                                    />
+                                                ))}
+                                                {categorySkills.length === 0 && (
+                                                    <p className="text-default-400 text-sm italic">No skills in this category yet.</p>
+                                                )}
+                                            </div>
+                                        </SortableContext>
+                                    </CardBody>
+                                </Card>
+                            );
+                        })}
+                    </DndContext>
                 </div>
             </div>
 
