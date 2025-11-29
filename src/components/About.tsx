@@ -33,7 +33,7 @@ export default function About() {
         const fetchData = async () => {
             try {
                 const [profileRes, skillsRes] = await Promise.all([
-                    supabase.from('profile').select('about_bio, skill_categories').single(),
+                    supabase.from('profile').select('bio, skill_categories').limit(1).single(),
                     supabase.from('skills').select('*')
                 ]);
 
@@ -110,7 +110,7 @@ export default function About() {
                     >
                         <h3>我是誰</h3>
                         <div className="space-y-4 text-neutral-300 leading-relaxed">
-                            {profile?.about_bio?.split('\n').map((paragraph: string, idx: number) => (
+                            {profile?.bio?.split('\n').map((paragraph: string, idx: number) => (
                                 paragraph.trim() && <p key={idx}>{paragraph}</p>
                             ))}
                         </div>
