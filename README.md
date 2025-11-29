@@ -83,4 +83,4 @@ npm run dev
 本項目可輕鬆部署至 [Vercel](https://vercel.com/) 或其他支援 Next.js 的平台。
 
 ---
-Created with ❤️ by [Your Name]
+Created with ❤️ by olen
