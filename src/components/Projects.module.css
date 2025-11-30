@@ -214,7 +214,7 @@
 .projectRow {
     display: flex;
     align-items: center;
-    gap: 6rem;
+    gap: 4rem;
     min-height: 80vh;
     padding: 4rem 2rem;
     opacity: 0;
@@ -277,7 +277,7 @@
 }
 
 .projectNumber {
-    font-size: 5rem;
+    font-size: 4rem;
     font-weight: 900;
     color: rgba(255, 255, 255, 0.05);
     line-height: 1;
@@ -312,6 +312,11 @@
     color: #94a3b8;
     line-height: 1.8;
     margin-bottom: 2rem;
+}
+
+.projectDesc::first-line {
+    color: #b4bcc7;
+    font-weight: bold;
 }
 
 .tags {

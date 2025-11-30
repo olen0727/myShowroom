@@ -95,7 +95,7 @@ function SortableProjectItem({
                             </div>
                             <div>
                                 <p className="text-tiny uppercase font-bold text-primary">{project.category}</p>
-                                <h4 className="font-bold text-large">{project.title}</h4>
+                                <h4 className="font-bold text-large whitespace-pre-wrap">{project.title}</h4>
                             </div>
                         </div>
                         <div className="flex gap-1">
@@ -128,7 +128,7 @@ function SortableProjectItem({
                             </div>
                         )}
                     </div>
-                    <p className="text-default-500 text-sm line-clamp-2 mb-4 min-h-[40px]">
+                    <p className="text-default-500 text-sm line-clamp-2 mb-4 min-h-[40px] whitespace-pre-wrap">
                         {project.description}
                     </p>
                     <div className="flex flex-wrap gap-2">
@@ -422,12 +422,13 @@ export default function ProjectsTab() {
                             <ModalBody>
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                     <div className="space-y-4">
-                                        <Input
+                                        <Textarea
                                             label="Title"
-                                            placeholder="Project Name"
+                                            placeholder="Project Name (supports multiline)"
                                             value={currentProject.title || ''}
                                             onValueChange={val => setCurrentProject({ ...currentProject, title: val })}
                                             variant="bordered"
+                                            minRows={1}
                                         />
                                         <Select
                                             label="Category"

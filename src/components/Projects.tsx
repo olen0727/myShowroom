@@ -240,25 +240,29 @@ export default function Projects() {
                             <div className={styles.projectNumber}>
                                 {(index + 1).toString().padStart(2, '0')}
                             </div>
-                            <h3 className={styles.projectTitle}>
+                            <h3 className={styles.projectTitle} style={{ whiteSpace: 'pre-wrap' }}>
                                 {project.title}
                                 <span className={`${styles.projectTag} ${project.category === 'UX' ? styles.tagUx : styles.tagFrontend}`}>
                                     {project.category === '前端' ? '前端' : 'UX'}
                                 </span>
                             </h3>
-                            <p className={styles.projectDesc}>{project.description}</p>
+                            <p className={styles.projectDesc} style={{ whiteSpace: 'pre-wrap' }}>{project.description}</p>
                             <div className={styles.tags}>
                                 {project.tags.map((tag: string) => (
                                     <span key={tag} className={styles.tag}>{tag}</span>
                                 ))}
                             </div>
                             <div className={styles.links}>
-                                <a href={project.demo_url} className={styles.linkBtn} target="_blank" rel="noopener noreferrer">
-                                    線上預覽 <ExternalLink size={18} />
-                                </a>
-                                <a href={project.github_url} className={styles.githubBtn} target="_blank" rel="noopener noreferrer">
-                                    <Github size={20} />
-                                </a>
+                                {project.demo_url && (
+                                    <a href={project.demo_url} className={styles.linkBtn} target="_blank" rel="noopener noreferrer">
+                                        線上預覽 <ExternalLink size={18} />
+                                    </a>
+                                )}
+                                {project.github_url && (
+                                    <a href={project.github_url} className={styles.githubBtn} target="_blank" rel="noopener noreferrer">
+                                        <Github size={20} />
+                                    </a>
+                                )}
                             </div>
                         </div>
                     </motion.div>
