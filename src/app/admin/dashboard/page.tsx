@@ -6,10 +6,7 @@ import { supabase } from '@/lib/supabase';
 import {
     Tabs,
     Tab,
-    Card,
-    CardBody,
     Button,
-    User as UserAvatar,
     Spacer
 } from "@nextui-org/react";
 import {
@@ -19,12 +16,14 @@ import {
     Code2,
     MessageSquare,
     LogOut,
-    Share2
+    Share2,
+    Images
 } from 'lucide-react';
 
 // Tabs
 import ProfileTab from '@/components/admin/ProfileTab';
 import ProjectsTab from '@/components/admin/ProjectsTab';
+import CarouselTab from '@/components/admin/CarouselTab';
 import ExperienceTab from '@/components/admin/ExperienceTab';
 import SkillsTab from '@/components/admin/SkillsTab';
 import MessagesTab from '@/components/admin/MessagesTab';
@@ -138,6 +137,18 @@ export default function AdminDashboard() {
                         >
                             <Spacer y={4} />
                             <ProjectsTab />
+                        </Tab>
+                        <Tab
+                            key="carousel"
+                            title={
+                                <div className="flex items-center space-x-2">
+                                    <Images size={20} />
+                                    <span>Carousel</span>
+                                </div>
+                            }
+                        >
+                            <Spacer y={4} />
+                            <CarouselTab />
                         </Tab>
                         <Tab
                             key="experience"

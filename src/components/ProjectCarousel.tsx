@@ -1,9 +1,11 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { EffectCoverflow, Pagination, Autoplay } from 'swiper/modules';
 import Image from 'next/image';
 import { ExternalLink, Github } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 import styles from './ProjectCarousel.module.css';
 
 // Import Swiper styles
@@ -11,86 +13,46 @@ import 'swiper/css';
 import 'swiper/css/effect-coverflow';
 import 'swiper/css/pagination';
 
-// Mock Data
-const MOCK_PROJECTS = [
-    {
-        id: '1',
-        title: 'Project Alpha',
-        description: 'A cutting-edge web application built with Next.js and Supabase.',
-        image: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=1000&auto=format&fit=crop',
-        tags: ['Next.js', 'React', 'TypeScript'],
-        demo_url: 'https://example.com',
-        github_url: 'https://github.com'
-    },
-    {
-        id: '2',
-        title: 'Project Beta',
-        description: 'Mobile-first e-commerce platform with seamless checkout experience.',
-        image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=1000&auto=format&fit=crop',
-        tags: ['Vue', 'Firebase', 'Tailwind'],
-        demo_url: 'https://example.com',
-        github_url: ''
-    },
-    {
-        id: '3',
-        title: 'Project Gamma',
-        description: 'Real-time data visualization dashboard for financial analytics.',
-        image: 'https://images.unsplash.com/photo-1551033406-611cf9a28f67?q=80&w=1000&auto=format&fit=crop',
-        tags: ['D3.js', 'Angular', 'Node.js'],
-        demo_url: '',
-        github_url: 'https://github.com'
-    },
-    {
-        id: '4',
-        title: 'Project Delta',
-        description: 'AI-powered content generation tool for marketers.',
-        image: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?q=80&w=1000&auto=format&fit=crop',
-        tags: ['Python', 'FastAPI', 'OpenAI'],
-        demo_url: 'https://example.com',
-        github_url: 'https://github.com'
-    },
-    {
-        id: '5',
-        title: 'Project Epsilon',
-        description: 'Social media management platform with scheduling features.',
-        image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=1000&auto=format&fit=crop',
-        tags: ['React Native', 'GraphQL', 'AWS'],
-        demo_url: 'https://example.com',
-        github_url: 'https://github.com'
-    },
-    {
-        id: '5-copy',
-        title: 'Project Epsilon Copy',
-        description: 'Social media management platform with scheduling features.',
-        image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=1000&auto=format&fit=crop',
-        tags: ['React Native', 'GraphQL', 'AWS'],
-        demo_url: 'https://example.com',
-        github_url: 'https://github.com'
-    },
-    {
-        id: '6',
-        title: 'Project Zeta',
-        description: 'Decentralized finance (DeFi) dashboard for tracking crypto assets.',
-        image: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?q=80&w=1000&auto=format&fit=crop',
-        tags: ['Solidity', 'Web3.js', 'Ethereum'],
-        demo_url: 'https://example.com',
-        github_url: 'https://github.com'
-    },
-    {
-        id: '7',
-        title: 'Project Eta',
-        description: 'IoT smart home control panel with real-time sensor data.',
-        image: 'https://images.unsplash.com/photo-1558002038-1091a166111c?q=80&w=1000&auto=format&fit=crop',
-        tags: ['MQTT', 'Node-RED', 'Raspberry Pi'],
-        demo_url: '',
-        github_url: 'https://github.com'
-    }
-];
+interface CarouselProject {
+    id: string;
+    title: string;
+    description: string;
+    image: string;
+    tags: string[];
+    demo_url?: string;
+    github_url?: string;
+}
 
 export default function ProjectCarousel() {
+    const [projects, setProjects] = useState<CarouselProject[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchProjects = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('carousel_projects')
+                    .select('*')
+                    .order('display_order', { ascending: true });
+
+                if (error) throw error;
+                setProjects(data || []);
+            } catch (error) {
+                console.error('Error fetching carousel projects:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchProjects();
+    }, []);
+
+    if (loading) return null; // Or a loading skeleton
+    if (projects.length === 0) return null;
+
     return (
         <div className={styles.carouselContainer}>
-            <h2 className={styles.carouselTitle}>更多作品</h2>
+            <h2 className={styles.carouselTitle}>個人作品</h2>
 
             <Swiper
                 effect={'coverflow'}
@@ -98,37 +60,44 @@ export default function ProjectCarousel() {
                 centeredSlides={true}
                 slidesPerView={'auto'}
                 slideToClickedSlide={true}
-                loop={true}
+                loop={projects.length > 3} // Only loop if enough items
                 coverflowEffect={{
                     rotate: 0,
                     stretch: 0,
                     depth: 100,
-                    modifier: 2,
+                    modifier: 2.5,
                     slideShadows: false,
                 }}
                 pagination={{ clickable: true }}
                 autoplay={{
                     delay: 3000,
-                    disableOnInteraction: true,
+                    disableOnInteraction: false,
+                    pauseOnMouseEnter: true,
                 }}
                 modules={[EffectCoverflow, Pagination, Autoplay]}
                 className={styles.swiperContainer}
             >
-                {MOCK_PROJECTS.map((project) => (
+                {projects.map((project) => (
                     <SwiperSlide key={project.id} className={styles.slide}>
                         <div className={styles.imageWrapper}>
-                            <Image
-                                src={project.image}
-                                alt={project.title}
-                                fill
-                                className={styles.image}
-                            />
+                            {project.image ? (
+                                <Image
+                                    src={project.image}
+                                    alt={project.title}
+                                    fill
+                                    className={styles.image}
+                                />
+                            ) : (
+                                <div className="w-full h-full bg-gray-800 flex items-center justify-center text-gray-500">
+                                    No Image
+                                </div>
+                            )}
                         </div>
                         <div className={styles.content}>
                             <h3 className={styles.title}>{project.title}</h3>
                             <p className={styles.description}>{project.description}</p>
                             <div className={styles.tags}>
-                                {project.tags.map(tag => (
+                                {project.tags?.map(tag => (
                                     <span key={tag} className={styles.tag}>{tag}</span>
                                 ))}
                             </div>
