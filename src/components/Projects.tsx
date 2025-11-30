@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { ExternalLink, Github } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import styles from './Projects.module.css';
+import ProjectCarousel from './ProjectCarousel';
 
 // Image Slider Component
 function ImageSlider({ images, title }: { images: string[], title: string }) {
@@ -268,6 +269,8 @@ export default function Projects() {
                     </motion.div>
                 ))}
             </div>
+
+            <ProjectCarousel />
         </section>
     );
 }
