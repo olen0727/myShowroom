@@ -57,6 +57,33 @@ const MOCK_PROJECTS = [
         tags: ['React Native', 'GraphQL', 'AWS'],
         demo_url: 'https://example.com',
         github_url: 'https://github.com'
+    },
+    {
+        id: '5-copy',
+        title: 'Project Epsilon Copy',
+        description: 'Social media management platform with scheduling features.',
+        image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=1000&auto=format&fit=crop',
+        tags: ['React Native', 'GraphQL', 'AWS'],
+        demo_url: 'https://example.com',
+        github_url: 'https://github.com'
+    },
+    {
+        id: '6',
+        title: 'Project Zeta',
+        description: 'Decentralized finance (DeFi) dashboard for tracking crypto assets.',
+        image: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?q=80&w=1000&auto=format&fit=crop',
+        tags: ['Solidity', 'Web3.js', 'Ethereum'],
+        demo_url: 'https://example.com',
+        github_url: 'https://github.com'
+    },
+    {
+        id: '7',
+        title: 'Project Eta',
+        description: 'IoT smart home control panel with real-time sensor data.',
+        image: 'https://images.unsplash.com/photo-1558002038-1091a166111c?q=80&w=1000&auto=format&fit=crop',
+        tags: ['MQTT', 'Node-RED', 'Raspberry Pi'],
+        demo_url: '',
+        github_url: 'https://github.com'
     }
 ];
 
@@ -70,18 +97,19 @@ export default function ProjectCarousel() {
                 grabCursor={true}
                 centeredSlides={true}
                 slidesPerView={'auto'}
+                slideToClickedSlide={true}
                 loop={true}
                 coverflowEffect={{
                     rotate: 0,
                     stretch: 0,
                     depth: 100,
-                    modifier: 2.5,
+                    modifier: 2,
                     slideShadows: false,
                 }}
                 pagination={{ clickable: true }}
                 autoplay={{
                     delay: 3000,
-                    disableOnInteraction: false,
+                    disableOnInteraction: true,
                 }}
                 modules={[EffectCoverflow, Pagination, Autoplay]}
                 className={styles.swiperContainer}
