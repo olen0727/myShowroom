@@ -25,7 +25,7 @@ export default function AdminLogin() {
 
             if (error) throw error;
 
-            router.push('/admin/dashboard');
+            router.push('/admin/profile');
         } catch (err: any) {
             setError(err.message || '登入失敗');
         } finally {
