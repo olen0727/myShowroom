@@ -99,16 +99,27 @@ Buckets：
 
 - project-images/content/：Plate 內容內貼上圖片的上傳路徑
 
-## 5. 核心功能更新 (2025-12-28)
+## 5. 核心功能更新 (2025-12-29)
 ### 5.1 專案編輯器 (ProjectEditor)
-*   **工具列增強**：恢復並強化了文字樣式（粗體、斜體等）、標題、區塊引用、程式碼區塊等功能。
+*   **工具列增強**：恢復並強化了文字樣式、標題、區塊引用、程式碼區塊等功能。
+*   **欄位佈局 (Column Layout)**：
+    *   整合 `@platejs/layout`，支援多欄位排版。
+    *   後台編輯器與前台頁面皆支援 RWD（桌面雙欄、手機單欄）。
 *   **顏色選擇器 (ColorPicker)**：
-    *   新增 `src/components/admin/shared/ColorPicker.tsx` 元件。
-    *   使用 Popover 介面取代原生 input。
-    *   支援「預設顏色」（格狀排列）與「自訂顏色」（包含歷史記錄）。
-*   **Markdown 表格支援**：
-    *   新增 `parseMarkdownTable` (lib/utils) 解析器。
-    *   `tablePastePlugin` 支援從 Notion 或 Markdown 來源貼上表格。
+    *   支援「預設顏色」與「自訂顏色」。
+    *   新增「確認新增」與「刪除自訂顏色」功能，並同步更新 `project_tag_colors` 表格。
+*   **儲存行為優化**：
+    *   新專案儲存後重定向至該專案的編輯頁。
+    *   既有專案儲存後停留在當前編輯頁。
+*   **Markdown 表格**：支援從 Notion/Markdown 貼上表格。
+
+### 5.2 輪播管理 (Carousel)
+*   **獨立管理介面**：
+    *   `CarouselList`：可拖瑞排序的輪播列表。
+    *   `CarouselEditor`：獨立的輪播專案編輯器，支援圖片上傳與標籤管理。
+*   **資料結構**：
+    *   使用 `carousel_projects` 表格儲存輪播資料。
+    *   共用 `project_tag_colors` 確保標籤顏色一致。
 
 ## 6. 外部整合 / API
 服務：Supabase

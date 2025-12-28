@@ -15,6 +15,7 @@ import {
 import { BasicBlocksPlugin, BasicMarksPlugin } from '@platejs/basic-nodes/react';
 import { ListPlugin } from '@platejs/list/react';
 import { LinkPlugin } from '@platejs/link/react';
+import { IndentPlugin } from '@platejs/indent/react';
 
 import { ImagePlugin } from '@platejs/media/react';
 import { ColumnPlugin, ColumnItemPlugin } from '@platejs/layout/react';
@@ -124,6 +125,7 @@ export default function ProjectDetailPage() {
         ColumnPlugin.withComponent(ColumnGroupElement),
         ColumnItemPlugin.withComponent(ColumnElement),
         ListPlugin,
+        IndentPlugin,
         LinkPlugin,
         ImagePlugin.withComponent(ImageElement),
     ]), []);
@@ -247,4 +249,3 @@ export default function ProjectDetailPage() {
         </div>
     );
 }
-
