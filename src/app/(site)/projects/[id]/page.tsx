@@ -17,33 +17,24 @@ import { ListPlugin } from '@platejs/list/react';
 import { LinkPlugin } from '@platejs/link/react';
 import { ImagePlugin } from '@platejs/media/react';
 
-interface Project {
-    id: string;
-    title: string;
-    description: string;
-    tags: string[];
-    content?: Value | string | null;
-}
-
-const TAG_COLORS_TABLE = 'project_tag_colors';
+// Shared Imports
+import { Project } from '@/types';
+import { normalizeHexColor } from '@/lib/utils';
+import { TAG_COLORS_TABLE } from '@/lib/constants';
+import {
+    ImageElement,
+    CodeBlockElement,
+    CalloutElement,
+    HrElement,
+    TableElement,
+    TableRowElement,
+    TableCellElement,
+    TableHeaderCellElement
+} from '@/components/editor/PlateUiElements';
 
 const EMPTY_PLATE_VALUE: Value = [
     { type: 'p', children: [{ text: '' }] },
 ];
-
-const normalizeHexColor = (value: string) => {
-    const trimmed = value.trim();
-    if (/^#([0-9a-f]{3}){1,2}$/i.test(trimmed)) {
-        if (trimmed.length === 4) {
-            const r = trimmed[1];
-            const g = trimmed[2];
-            const b = trimmed[3];
-            return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
-        }
-        return trimmed.toLowerCase();
-    }
-    return '';
-};
 
 const parsePlateValue = (raw: unknown): Value => {
     if (Array.isArray(raw)) {
@@ -71,175 +62,36 @@ const parsePlateValue = (raw: unknown): Value => {
     return EMPTY_PLATE_VALUE;
 };
 
-const ImageElement = ({ attributes, children, element }: {
-    attributes: React.HTMLAttributes<HTMLDivElement>;
-    children: React.ReactNode;
-    element: { url?: string; alt?: string };
-}) => (
-    <div {...attributes} className={styles.contentBlock}>
-        <div contentEditable={false} className={styles.imageFrame}>
-            {element?.url ? (
-                <img
-                    src={element.url}
-                    alt={element.alt || 'content image'}
-                    className={styles.contentImage}
-                />
-            ) : (
-                <div className={styles.mutedText}>Image not available</div>
-            )}
-        </div>
-        {children}
-    </div>
-);
-
-const CodeBlockElement = ({ attributes, children }: {
-    attributes: React.HTMLAttributes<HTMLPreElement>;
-    children: React.ReactNode;
-}) => (
-    <pre {...attributes} className={styles.codeBlock}>
-        <code>{children}</code>
-    </pre>
-);
-
-const CalloutElement = ({ attributes, children }: {
-    attributes: React.HTMLAttributes<HTMLDivElement>;
-    children: React.ReactNode;
-}) => (
-    <div {...attributes} className={styles.callout}>
-        {children}
-    </div>
-);
-
-const HrElement = ({ attributes, children }: {
-    attributes: React.HTMLAttributes<HTMLDivElement>;
-    children: React.ReactNode;
-}) => (
-    <div {...attributes} className={styles.hrWrapper}>
-        <hr className={styles.hr} contentEditable={false} />
-        {children}
-    </div>
-);
-
-const TableElement = ({ attributes, children }: {
-    attributes: React.HTMLAttributes<HTMLTableElement>;
-    children: React.ReactNode;
-}) => (
-    <table {...attributes} className={styles.table}>
-        <tbody>{children}</tbody>
-    </table>
-);
-
-const TableRowElement = ({ attributes, children }: {
-    attributes: React.HTMLAttributes<HTMLTableRowElement>;
-    children: React.ReactNode;
-}) => (
-    <tr {...attributes} className={styles.tableRow}>
-        {children}
-    </tr>
-);
-
-const TableCellElement = ({ attributes, children }: {
-    attributes: React.HTMLAttributes<HTMLTableCellElement>;
-    children: React.ReactNode;
-}) => (
-    <td {...attributes} className={styles.tableCell}>
-        {children}
-    </td>
-);
-
-const TableHeaderCellElement = ({ attributes, children }: {
-    attributes: React.HTMLAttributes<HTMLTableCellElement>;
-    children: React.ReactNode;
-}) => (
-    <th {...attributes} className={styles.tableHeaderCell}>
-        {children}
-    </th>
-);
-
-const CodeBlockPlugin = createPlatePlugin({
-    key: NODES.codeBlock,
-    node: { isElement: true, isBlock: true },
-    render: { node: CodeBlockElement },
-});
-
-const CalloutPlugin = createPlatePlugin({
-    key: NODES.callout,
-    node: { isElement: true, isBlock: true },
-    render: { node: CalloutElement },
-});
-
-const HrPlugin = createPlatePlugin({
-    key: NODES.hr,
-    node: { isElement: true, isBlock: true },
-    render: { node: HrElement },
-});
-
-const TablePlugin = createPlatePlugin({
-    key: NODES.table,
-    node: { isElement: true, isBlock: true },
-    render: { node: TableElement },
-});
-
-const TableRowPlugin = createPlatePlugin({
-    key: NODES.tr,
-    node: { isElement: true, isBlock: true },
-    render: { node: TableRowElement },
-});
-
-const TableCellPlugin = createPlatePlugin({
-    key: NODES.td,
-    node: { isElement: true, isBlock: true },
-    render: { node: TableCellElement },
-});
-
-const TableHeaderCellPlugin = createPlatePlugin({
-    key: NODES.th,
-    node: { isElement: true, isBlock: true },
-    render: { node: TableHeaderCellElement },
-});
+// Plugins Definition reusing shared Elements
+const CodeBlockPlugin = createPlatePlugin({ key: NODES.codeBlock, node: { isElement: true }, render: { node: CodeBlockElement } });
+const CalloutPlugin = createPlatePlugin({ key: NODES.callout, node: { isElement: true }, render: { node: CalloutElement } });
+const HrPlugin = createPlatePlugin({ key: NODES.hr, node: { isElement: true }, render: { node: HrElement } });
+const TablePlugin = createPlatePlugin({ key: NODES.table, node: { isElement: true }, render: { node: TableElement } });
+const TableRowPlugin = createPlatePlugin({ key: NODES.tr, node: { isElement: true }, render: { node: TableRowElement } });
+const TableCellPlugin = createPlatePlugin({ key: NODES.td, node: { isElement: true }, render: { node: TableCellElement } });
+const TableHeaderCellPlugin = createPlatePlugin({ key: NODES.th, node: { isElement: true }, render: { node: TableHeaderCellElement } });
 
 const StyledBlocksPlugin = BasicBlocksPlugin
-    .extendPlugin({ key: NODES.h1 }, {
-        node: { props: { className: 'text-3xl font-semibold text-white' } },
-    })
-    .extendPlugin({ key: NODES.h2 }, {
-        node: { props: { className: 'text-2xl font-semibold text-white' } },
-    })
-    .extendPlugin({ key: NODES.h3 }, {
-        node: { props: { className: 'text-xl font-semibold text-white' } },
-    })
-    .extendPlugin({ key: NODES.blockquote }, {
-        node: { props: { className: 'border-l-2 border-white/20 pl-4 italic text-white/80' } },
-    })
-    .extendPlugin({ key: NODES.p }, {
-        node: { props: { className: 'text-base leading-relaxed text-slate-200' } },
-    });
+    .extendPlugin({ key: NODES.h1 }, { node: { props: { className: 'text-3xl font-semibold text-white' } } })
+    .extendPlugin({ key: NODES.h2 }, { node: { props: { className: 'text-2xl font-semibold text-white' } } })
+    .extendPlugin({ key: NODES.h3 }, { node: { props: { className: 'text-xl font-semibold text-white' } } })
+    .extendPlugin({ key: NODES.blockquote }, { node: { props: { className: 'border-l-2 border-white/20 pl-4 italic text-white/80' } } })
+    .extendPlugin({ key: NODES.p }, { node: { props: { className: 'text-base leading-relaxed text-slate-200' } } });
 
 const renderLeaf = ({ attributes, children, leaf }: {
     attributes: React.HTMLAttributes<HTMLSpanElement>;
     children: React.ReactNode;
     leaf: { [key: string]: unknown; color?: string; backgroundColor?: string };
 }) => {
-    const style: React.CSSProperties = {
-        ...(attributes.style || {}),
-    };
+    const style: React.CSSProperties = { ...(attributes.style || {}) };
 
     const textColor = leaf[STYLE_KEYS.color] as string | undefined;
     const highlightColor = leaf[STYLE_KEYS.backgroundColor] as string | undefined;
 
-    if (textColor) {
-        style.color = textColor;
-    }
+    if (textColor) style.color = textColor;
+    if (highlightColor) style.backgroundColor = highlightColor;
 
-    if (highlightColor) {
-        style.backgroundColor = highlightColor;
-    }
-
-    return (
-        <span {...attributes} style={style}>
-            {children}
-        </span>
-    );
+    return <span {...attributes} style={style}>{children}</span>;
 };
 
 export default function ProjectDetailPage() {
@@ -268,13 +120,7 @@ export default function ProjectDetailPage() {
         ImagePlugin.withComponent(ImageElement),
     ]), []);
 
-    const editor = usePlateEditor(
-        {
-            plugins,
-            value: contentValue,
-        },
-        [editorKey]
-    );
+    const editor = usePlateEditor({ plugins, value: contentValue }, [editorKey]);
 
     useEffect(() => {
         if (!projectId) return;
@@ -282,7 +128,6 @@ export default function ProjectDetailPage() {
         const fetchProject = async () => {
             setLoading(true);
             setError(null);
-
             try {
                 const { data, error: fetchError } = await supabase
                     .from('projects')
@@ -291,7 +136,6 @@ export default function ProjectDetailPage() {
                     .single();
 
                 if (fetchError) throw fetchError;
-
                 setProject(data as Project);
                 setContentValue(parsePlateValue(data?.content));
                 setEditorKey((prev) => prev + 1);
@@ -302,7 +146,6 @@ export default function ProjectDetailPage() {
                 setLoading(false);
             }
         };
-
         fetchProject();
     }, [projectId]);
 
@@ -319,17 +162,13 @@ export default function ProjectDetailPage() {
                 (data || []).forEach((row: any) => {
                     if (typeof row?.tag !== 'string' || typeof row?.color !== 'string') return;
                     const normalized = normalizeHexColor(row.color);
-                    if (normalized) {
-                        nextMap[row.tag] = normalized;
-                    }
+                    if (normalized) nextMap[row.tag] = normalized;
                 });
-
                 setTagColorMap(nextMap);
             } catch (error) {
                 console.error('Error fetching tag colors:', error);
             }
         };
-
         fetchTagColors();
     }, []);
 
@@ -349,13 +188,8 @@ export default function ProjectDetailPage() {
                     Back
                 </button>
 
-                {loading && (
-                    <div className={styles.status}>Loading project...</div>
-                )}
-
-                {!loading && error && (
-                    <div className={styles.status}>{error}</div>
-                )}
+                {loading && <div className={styles.status}>Loading project...</div>}
+                {!loading && error && <div className={styles.status}>{error}</div>}
 
                 {!loading && !error && project && (
                     <div className={styles.contentWrapper}>
@@ -376,12 +210,7 @@ export default function ProjectDetailPage() {
                                     project.tags.map((tag) => {
                                         const tagColor = tagColorMap[tag];
                                         const normalized = tagColor ? normalizeHexColor(tagColor) : '';
-                                        const tagStyle = normalized
-                                            ? {
-                                                backgroundColor: normalized,
-                                                borderColor: normalized,
-                                            }
-                                            : undefined;
+                                        const tagStyle = normalized ? { backgroundColor: normalized, borderColor: normalized } : undefined;
                                         return (
                                             <span key={tag} className={styles.tag} style={tagStyle}>
                                                 {tag}
@@ -410,3 +239,4 @@ export default function ProjectDetailPage() {
         </div>
     );
 }
+

@@ -9,21 +9,8 @@ import { supabase } from '@/lib/supabase';
 import styles from './Projects.module.css';
 import ProjectCarousel from './ProjectCarousel';
 
-const TAG_COLORS_TABLE = 'project_tag_colors';
-
-const normalizeHexColor = (value: string) => {
-    const trimmed = value.trim();
-    if (/^#([0-9a-f]{3}){1,2}$/i.test(trimmed)) {
-        if (trimmed.length === 4) {
-            const r = trimmed[1];
-            const g = trimmed[2];
-            const b = trimmed[3];
-            return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
-        }
-        return trimmed.toLowerCase();
-    }
-    return '';
-};
+import { normalizeHexColor } from '@/lib/utils';
+import { TAG_COLORS_TABLE } from '@/lib/constants';
 
 // Image Slider Component
 function ImageSlider({ images, title }: { images: string[], title: string }) {

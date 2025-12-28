@@ -1,10 +1,10 @@
 import AdminShell from '@/components/admin/AdminShell';
-import ProjectsTab from '@/components/admin/ProjectsTab';
+import ProjectList from '@/components/admin/projects/ProjectList';
 
 export default function AdminProjectsPage() {
     return (
         <AdminShell>
-            <ProjectsTab />
+            <ProjectList />
         </AdminShell>
     );
 }
