@@ -123,3 +123,26 @@ export const TableHeaderCellElement = ({ attributes, children }: TableCellElemen
         {children}
     </th>
 );
+
+// --- Column Elements ---
+type ColumnGroupElementProps = {
+    attributes: React.HTMLAttributes<HTMLDivElement>;
+    children: React.ReactNode;
+};
+
+export const ColumnGroupElement = ({ attributes, children }: ColumnGroupElementProps) => (
+    <div {...attributes} className="my-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+        {children}
+    </div>
+);
+
+type ColumnElementProps = {
+    attributes: React.HTMLAttributes<HTMLDivElement>;
+    children: React.ReactNode;
+};
+
+export const ColumnElement = ({ attributes, children }: ColumnElementProps) => (
+    <div {...attributes} className="min-w-0 border border-white/5 rounded-lg p-2 bg-white/5">
+        {children}
+    </div>
+);

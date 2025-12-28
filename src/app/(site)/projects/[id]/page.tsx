@@ -15,7 +15,9 @@ import {
 import { BasicBlocksPlugin, BasicMarksPlugin } from '@platejs/basic-nodes/react';
 import { ListPlugin } from '@platejs/list/react';
 import { LinkPlugin } from '@platejs/link/react';
+
 import { ImagePlugin } from '@platejs/media/react';
+import { ColumnPlugin, ColumnItemPlugin } from '@platejs/layout/react';
 
 // Shared Imports
 import { Project } from '@/types';
@@ -29,7 +31,9 @@ import {
     TableElement,
     TableRowElement,
     TableCellElement,
-    TableHeaderCellElement
+    TableHeaderCellElement,
+    ColumnGroupElement,
+    ColumnElement
 } from '@/components/editor/PlateUiElements';
 
 const EMPTY_PLATE_VALUE: Value = [
@@ -70,6 +74,8 @@ const TablePlugin = createPlatePlugin({ key: NODES.table, node: { isElement: tru
 const TableRowPlugin = createPlatePlugin({ key: NODES.tr, node: { isElement: true }, render: { node: TableRowElement } });
 const TableCellPlugin = createPlatePlugin({ key: NODES.td, node: { isElement: true }, render: { node: TableCellElement } });
 const TableHeaderCellPlugin = createPlatePlugin({ key: NODES.th, node: { isElement: true }, render: { node: TableHeaderCellElement } });
+// Using official Plate.js API for column layout
+// ColumnPlugin and ColumnItemPlugin will be configured with withComponent() in the plugins array
 
 const StyledBlocksPlugin = BasicBlocksPlugin
     .extendPlugin({ key: NODES.h1 }, { node: { props: { className: 'text-3xl font-semibold text-white' } } })
@@ -115,6 +121,8 @@ export default function ProjectDetailPage() {
         TableRowPlugin,
         TableCellPlugin,
         TableHeaderCellPlugin,
+        ColumnPlugin.withComponent(ColumnGroupElement),
+        ColumnItemPlugin.withComponent(ColumnElement),
         ListPlugin,
         LinkPlugin,
         ImagePlugin.withComponent(ImageElement),

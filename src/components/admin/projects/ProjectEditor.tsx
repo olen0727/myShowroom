@@ -41,7 +41,8 @@ import {
     Type,
     Table2,
     Trash2,
-    GripVertical
+    GripVertical,
+    Columns
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Image from 'next/image';
@@ -64,6 +65,8 @@ import { LinkPlugin } from '@platejs/link/react';
 import { indent, outdent } from '@platejs/indent';
 import { IndentPlugin } from '@platejs/indent/react';
 import { ImagePlugin } from '@platejs/media/react';
+
+import { ColumnPlugin, ColumnItemPlugin } from '@platejs/layout/react';
 import { AutoformatPlugin } from '@platejs/autoformat';
 import { getRangeBoundingClientRect } from '@platejs/floating';
 import {
@@ -102,7 +105,9 @@ import {
     TableElement,
     TableRowElement,
     TableCellElement,
-    TableHeaderCellElement
+    TableHeaderCellElement,
+    ColumnGroupElement,
+    ColumnElement
 } from '@/components/editor/PlateUiElements';
 
 import { SortableTagItem } from '@/components/admin/shared/SortableTagItem';
@@ -115,6 +120,8 @@ const TablePlugin = createPlatePlugin({ key: NODES.table, node: { isElement: tru
 const TableRowPlugin = createPlatePlugin({ key: NODES.tr, node: { isElement: true }, render: { node: TableRowElement } });
 const TableCellPlugin = createPlatePlugin({ key: NODES.td, node: { isElement: true }, render: { node: TableCellElement } });
 const TableHeaderCellPlugin = createPlatePlugin({ key: NODES.th, node: { isElement: true }, render: { node: TableHeaderCellElement } });
+// Using official Plate.js API for column layout
+// ColumnPlugin and ColumnItemPlugin will be configured with withComponent() in the plugins array
 const FontColorPlugin = createPlatePlugin({ key: STYLE_KEYS.color, node: { isLeaf: true } });
 const FontBackgroundColorPlugin = createPlatePlugin({ key: STYLE_KEYS.backgroundColor, node: { isLeaf: true } });
 
@@ -294,6 +301,8 @@ export default function ProjectEditor({ initialProject, onSave, onCancel, standa
     const plugins = useMemo(() => ([
         StyledBlocksPlugin, BasicMarksPlugin, CalloutPlugin, CodeBlockPlugin, HrPlugin,
         TablePlugin, TableRowPlugin, TableCellPlugin, TableHeaderCellPlugin,
+        ColumnPlugin.withComponent(ColumnGroupElement),
+        ColumnItemPlugin.withComponent(ColumnElement),
         ListPlugin, IndentPlugin, LinkPlugin,
         FontColorPlugin, FontBackgroundColorPlugin,
         ImagePlugin.configure({ options: { uploadImage: handleContentImageUpload } }).withComponent(ImageElement),
@@ -663,6 +672,15 @@ export default function ProjectEditor({ initialProject, onSave, onCancel, standa
                     {/* Insertions */}
                     <Tooltip content="Link"><Button isIconOnly size="sm" variant="flat" onPress={handleInsertLink}><LinkIcon size={16} /></Button></Tooltip>
                     <Tooltip content="Image"><Button isIconOnly size="sm" variant="flat" onPress={openContentImagePicker}><ImagePlus size={16} /></Button></Tooltip>
+                    <Tooltip content="Two Columns"><Button isIconOnly size="sm" variant="flat" onPress={() => {
+                        Transforms.insertNodes(editor as any, {
+                            type: 'column_group',
+                            children: [
+                                { type: 'column', children: [{ type: NODES.p, children: [{ text: 'Left column' }] }] },
+                                { type: 'column', children: [{ type: NODES.p, children: [{ text: 'Right column' }] }] }
+                            ]
+                        } as any);
+                    }}><Columns size={16} /></Button></Tooltip>
                     <Tooltip content="Divider"><Button isIconOnly size="sm" variant="flat" onPress={insertDivider}><Minus size={16} /></Button></Tooltip>
                     <Tooltip content="Table"><Button isIconOnly size="sm" variant="flat" onPress={() => {
                         Transforms.insertNodes(editor as any, {
