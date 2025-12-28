@@ -535,6 +535,127 @@ const preventMouseDown = (event: React.MouseEvent) => {
     event.preventDefault();
 };
 
+const defaultTagColors = ['#1f2937', '#111827', '#0f172a', '#1e293b', '#0b1320', '#111827'];
+const TAG_COLOR_STORAGE_KEY = 'project-tag-color-map';
+
+const hashTag = (value: string) => {
+    let hash = 0;
+    for (let i = 0; i < value.length; i += 1) {
+        hash = (hash * 31 + value.charCodeAt(i)) % 997;
+    }
+    return hash;
+};
+
+const normalizeHexColor = (value: string) => {
+    const trimmed = value.trim();
+    if (/^#([0-9a-f]{3}){1,2}$/i.test(trimmed)) {
+        if (trimmed.length === 4) {
+            const r = trimmed[1];
+            const g = trimmed[2];
+            const b = trimmed[3];
+            return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
+        }
+        return trimmed.toLowerCase();
+    }
+    return '';
+};
+
+const getContrastColor = (hex: string) => {
+    const normalized = normalizeHexColor(hex);
+    if (!normalized) return '#ffffff';
+    const r = parseInt(normalized.slice(1, 3), 16);
+    const g = parseInt(normalized.slice(3, 5), 16);
+    const b = parseInt(normalized.slice(5, 7), 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.6 ? '#111827' : '#ffffff';
+};
+
+const TagColorPicker = ({
+    color,
+    onChange,
+}: {
+    color: string;
+    onChange: (value: string) => void;
+}) => {
+    const inputRef = useRef<HTMLInputElement | null>(null);
+
+    return (
+        <>
+            <button
+                type="button"
+                className="h-4 w-4 rounded border border-white/30"
+                style={{ backgroundColor: color }}
+                onMouseDown={preventMouseDown}
+                onClick={() => inputRef.current?.click()}
+            />
+            <input
+                ref={inputRef}
+                type="color"
+                className="hidden"
+                value={normalizeHexColor(color) || '#111827'}
+                onChange={(event) => onChange(event.target.value)}
+            />
+        </>
+    );
+};
+
+function SortableTagItem({
+    tag,
+    color,
+    textColor,
+    onRemove,
+    onColorChange,
+}: {
+    tag: string;
+    color: string;
+    textColor: string;
+    onRemove: (tagToRemove: string) => void;
+    onColorChange: (tagToUpdate: string, colorValue: string) => void;
+}) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: tag });
+
+    const style: React.CSSProperties = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.7 : 1,
+    };
+
+    return (
+        <div ref={setNodeRef} style={style}>
+            <Chip
+                onClose={() => onRemove(tag)}
+                variant="flat"
+                className="flex items-center gap-2 border border-white/10"
+                style={{ backgroundColor: color, color: textColor }}
+            >
+                <span className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        className="cursor-grab text-white/70 hover:text-white"
+                        onMouseDown={preventMouseDown}
+                        {...attributes}
+                        {...listeners}
+                    >
+                        <GripVertical size={12} />
+                    </button>
+                    <span className="text-xs font-medium">{tag}</span>
+                    <TagColorPicker
+                        color={color}
+                        onChange={(value) => onColorChange(tag, value)}
+                    />
+                </span>
+            </Chip>
+        </div>
+    );
+}
+
 // Sortable Item Component
 function SortableProjectItem({
     project,
@@ -636,6 +757,7 @@ export default function ProjectsTab() {
     const [contentUploading, setContentUploading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [tagInput, setTagInput] = useState("");
+    const [tagColorMap, setTagColorMap] = useState<Record<string, string>>({});
     const [contentValue, setContentValue] = useState<Value>(EMPTY_PLATE_VALUE);
     const [editorKey, setEditorKey] = useState(0);
     const contentImageInputRef = useRef<HTMLInputElement | null>(null);
@@ -662,6 +784,36 @@ export default function ProjectsTab() {
     useEffect(() => {
         fetchProjects();
     }, []);
+
+    useEffect(() => {
+        try {
+            const stored = localStorage.getItem(TAG_COLOR_STORAGE_KEY);
+            if (!stored) return;
+            const parsed = JSON.parse(stored);
+            if (!parsed || typeof parsed !== 'object') return;
+
+            const nextMap: Record<string, string> = {};
+            Object.entries(parsed as Record<string, unknown>).forEach(([key, value]) => {
+                if (typeof key !== 'string' || typeof value !== 'string') return;
+                const normalized = normalizeHexColor(value);
+                if (normalized) {
+                    nextMap[key] = normalized;
+                }
+            });
+
+            setTagColorMap(nextMap);
+        } catch {
+            // Ignore malformed localStorage data.
+        }
+    }, []);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem(TAG_COLOR_STORAGE_KEY, JSON.stringify(tagColorMap));
+        } catch {
+            // Ignore storage write failures.
+        }
+    }, [tagColorMap]);
 
     const handleContentImageUpload = useCallback(async (dataUrl: ArrayBuffer | string) => {
         setContentUploading(true);
@@ -870,6 +1022,19 @@ export default function ProjectsTab() {
 
     const textColors = ['#ffffff', '#60a5fa', '#34d399', '#f59e0b', '#f87171', '#a78bfa'];
     const highlightColors = ['#fef3c7', '#fee2e2', '#dcfce7', '#dbeafe', '#f3e8ff', '#f1f5f9'];
+
+    const getTagColor = useCallback((tag: string) => {
+        const stored = tagColorMap[tag];
+        const normalized = stored ? normalizeHexColor(stored) : '';
+        if (normalized) return normalized;
+        return defaultTagColors[hashTag(tag) % defaultTagColors.length];
+    }, [tagColorMap]);
+
+    const handleTagColorChange = useCallback((tag: string, color: string) => {
+        const normalized = normalizeHexColor(color);
+        if (!normalized) return;
+        setTagColorMap((prev) => ({ ...prev, [tag]: normalized }));
+    }, []);
 
     const handleIndentAction = useCallback((reverse = false) => {
         if (!editor) return;
@@ -1371,6 +1536,23 @@ export default function ProjectsTab() {
         }));
     };
 
+    const handleTagDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+
+        if (!over || active.id === over.id) return;
+
+        setCurrentProject((prev) => {
+            const tags = prev.tags || [];
+            const activeId = String(active.id);
+            const overId = String(over.id);
+            const oldIndex = tags.findIndex((tag) => tag === activeId);
+            const newIndex = tags.findIndex((tag) => tag === overId);
+
+            if (oldIndex < 0 || newIndex < 0) return prev;
+            return { ...prev, tags: arrayMove(tags, oldIndex, newIndex) };
+        });
+    };
+
     const handleDragEnd = async (event: DragEndEvent) => {
         const { active, over } = event;
 
@@ -1516,13 +1698,33 @@ export default function ProjectsTab() {
                                                 onKeyDown={handleAddTag}
                                                 variant="bordered"
                                             />
-                                            <div className="flex flex-wrap gap-2">
-                                                {currentProject.tags?.map(tag => (
-                                                    <Chip key={tag} onClose={() => removeTag(tag)} variant="flat">
-                                                        {tag}
-                                                    </Chip>
-                                                ))}
-                                            </div>
+                                            <DndContext
+                                                sensors={sensors}
+                                                collisionDetection={closestCenter}
+                                                onDragEnd={handleTagDragEnd}
+                                            >
+                                                <SortableContext
+                                                    items={currentProject.tags || []}
+                                                    strategy={rectSortingStrategy}
+                                                >
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {(currentProject.tags || []).map((tag) => {
+                                                            const tagColor = getTagColor(tag);
+                                                            const tagTextColor = getContrastColor(tagColor);
+                                                            return (
+                                                                <SortableTagItem
+                                                                    key={tag}
+                                                                    tag={tag}
+                                                                    color={tagColor}
+                                                                    textColor={tagTextColor}
+                                                                    onRemove={removeTag}
+                                                                    onColorChange={handleTagColorChange}
+                                                                />
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </SortableContext>
+                                            </DndContext>
                                         </div>
                                         <div className="flex gap-4">
                                             <Input
