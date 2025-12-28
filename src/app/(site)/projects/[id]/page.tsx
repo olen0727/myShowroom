@@ -110,6 +110,16 @@ const CalloutElement = ({ attributes, children }: {
     </div>
 );
 
+const HrElement = ({ attributes, children }: {
+    attributes: React.HTMLAttributes<HTMLDivElement>;
+    children: React.ReactNode;
+}) => (
+    <div {...attributes} className={styles.hrWrapper}>
+        <hr className={styles.hr} contentEditable={false} />
+        {children}
+    </div>
+);
+
 const TableElement = ({ attributes, children }: {
     attributes: React.HTMLAttributes<HTMLTableElement>;
     children: React.ReactNode;
@@ -158,6 +168,12 @@ const CalloutPlugin = createPlatePlugin({
     render: { node: CalloutElement },
 });
 
+const HrPlugin = createPlatePlugin({
+    key: NODES.hr,
+    node: { isElement: true, isBlock: true },
+    render: { node: HrElement },
+});
+
 const TablePlugin = createPlatePlugin({
     key: NODES.table,
     node: { isElement: true, isBlock: true },
@@ -194,9 +210,6 @@ const StyledBlocksPlugin = BasicBlocksPlugin
     })
     .extendPlugin({ key: NODES.blockquote }, {
         node: { props: { className: 'border-l-2 border-white/20 pl-4 italic text-white/80' } },
-    })
-    .extendPlugin({ key: NODES.hr }, {
-        node: { props: { className: 'my-4 border-white/10' } },
     })
     .extendPlugin({ key: NODES.p }, {
         node: { props: { className: 'text-base leading-relaxed text-slate-200' } },
@@ -245,6 +258,7 @@ export default function ProjectDetailPage() {
         BasicMarksPlugin,
         CalloutPlugin,
         CodeBlockPlugin,
+        HrPlugin,
         TablePlugin,
         TableRowPlugin,
         TableCellPlugin,

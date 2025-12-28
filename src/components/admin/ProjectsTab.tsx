@@ -305,6 +305,18 @@ const CalloutElement = ({ attributes, children }: CalloutElementProps) => (
     </div>
 );
 
+type HrElementProps = {
+    attributes: React.HTMLAttributes<HTMLDivElement>;
+    children: React.ReactNode;
+};
+
+const HrElement = ({ attributes, children }: HrElementProps) => (
+    <div {...attributes} className="my-4">
+        <hr className="border-white/10" contentEditable={false} />
+        {children}
+    </div>
+);
+
 const CodeBlockPlugin = createPlatePlugin({
     key: NODES.codeBlock,
     node: { isElement: true, isBlock: true },
@@ -315,6 +327,12 @@ const CalloutPlugin = createPlatePlugin({
     key: NODES.callout,
     node: { isElement: true, isBlock: true },
     render: { node: CalloutElement },
+});
+
+const HrPlugin = createPlatePlugin({
+    key: NODES.hr,
+    node: { isElement: true, isBlock: true },
+    render: { node: HrElement },
 });
 
 type TableElementProps = {
@@ -404,9 +422,6 @@ const StyledBlocksPlugin = BasicBlocksPlugin
     })
     .extendPlugin({ key: NODES.blockquote }, {
         node: { props: { className: 'border-l-2 border-white/20 pl-4 italic text-white/80' } },
-    })
-    .extendPlugin({ key: NODES.hr }, {
-        node: { props: { className: 'my-4 border-white/10' } },
     })
     .extendPlugin({ key: NODES.p }, {
         node: { props: { className: 'text-sm leading-relaxed text-white/85' } },
@@ -903,6 +918,7 @@ export default function ProjectsTab() {
         BasicMarksPlugin,
         CalloutPlugin,
         CodeBlockPlugin,
+        HrPlugin,
         TablePlugin,
         TableRowPlugin,
         TableCellPlugin,

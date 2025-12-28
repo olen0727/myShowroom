@@ -177,6 +177,15 @@
     color: #e2e8f0;
 }
 
+.hrWrapper {
+    margin: 1.5rem 0;
+}
+
+.hr {
+    border: none;
+    border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
 .table {
     width: 100%;
     border-collapse: collapse;
