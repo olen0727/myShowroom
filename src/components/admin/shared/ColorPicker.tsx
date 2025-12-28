@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Button, Tooltip } from "@nextui-org/react";
-import { Plus, Check } from 'lucide-react';
+import { Plus, Check, X } from 'lucide-react';
 import { normalizeHexColor } from '@/lib/utils';
 
 interface ColorPickerProps {
@@ -9,6 +9,7 @@ interface ColorPickerProps {
     label?: string;
     customColors?: string[];
     onCustomColorAdd?: (color: string) => void;
+    onCustomColorDelete?: (color: string) => void;
 }
 
 const DEFAULT_COLORS = [
@@ -35,15 +36,26 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
     onChange,
     label,
     customColors = [],
-    onCustomColorAdd
+    onCustomColorAdd,
+    onCustomColorDelete
 }) => {
     const inputRef = useRef<HTMLInputElement>(null);
     const selectedColor = normalizeHexColor(color || '');
+    const [pendingColor, setPendingColor] = useState<string>('');
 
-    const handleCustomColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Handle color input change (but don't add to custom list yet)
+    const handleColorInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newColor = e.target.value;
-        onChange(newColor);
-        onCustomColorAdd?.(newColor);
+        setPendingColor(newColor);
+        onChange(newColor); // Still update text color immediately for preview
+    };
+
+    // Confirm adding the pending color to custom list
+    const handleConfirmAdd = () => {
+        if (pendingColor && onCustomColorAdd) {
+            onCustomColorAdd(pendingColor);
+            setPendingColor(''); // Clear pending after add
+        }
     };
 
     return (
@@ -52,33 +64,66 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
 
             {/* Custom Colors Section */}
             <div className="mb-3">
-                <div className="text-xs text-default-400 mb-1">Custom Colors</div>
-                <div className="flex flex-wrap gap-1">
-                    {customColors.map((c, i) => (
-                        <Tooltip key={`${c}-${i}`} content={c}>
-                            <button
-                                className={`w-6 h-6 rounded-full border border-default-200 transition-transform hover:scale-110 relative flex items-center justify-center`}
-                                style={{ backgroundColor: c }}
-                                onClick={() => onChange(c)}
-                            >
-                                {selectedColor === normalizeHexColor(c) && <Check size={12} className="text-white drop-shadow-md" />}
-                            </button>
-                        </Tooltip>
-                    ))}
-                    <Tooltip content="Add custom color">
+                <div className="text-xs text-default-400 mb-1 flex justify-between items-center">
+                    <span>Custom Colors</span>
+                    {/* Add Button Section */}
+                    <div className="flex items-center gap-1">
+                        <div
+                            className="w-5 h-5 rounded-full border border-default-300"
+                            style={{ backgroundColor: pendingColor || '#000000' }}
+                        />
                         <button
-                            className="w-6 h-6 rounded-full border border-default-200 bg-content2 flex items-center justify-center hover:bg-content3 transition-colors"
+                            className="w-6 h-6 rounded-md bg-primary/10 text-primary hover:bg-primary/20 flex items-center justify-center transition-colors"
                             onClick={() => inputRef.current?.click()}
+                            title="Pick Color"
                         >
-                            <Plus size={14} className="text-default-500" />
+                            <Plus size={14} />
                         </button>
-                    </Tooltip>
-                    <input
-                        ref={inputRef}
-                        type="color"
-                        className="hidden"
-                        onChange={handleCustomColorChange}
-                    />
+                        {pendingColor && (
+                            <button
+                                className="w-6 h-6 rounded-md bg-success/10 text-success hover:bg-success/20 flex items-center justify-center transition-colors"
+                                onClick={handleConfirmAdd}
+                                title="Confirm Add"
+                            >
+                                <Check size={14} />
+                            </button>
+                        )}
+                        <input
+                            ref={inputRef}
+                            type="color"
+                            className="hidden"
+                            onChange={handleColorInputChange}
+                            value={pendingColor || selectedColor}
+                        />
+                    </div>
+                </div>
+
+                <div className="flex flex-wrap gap-1 mt-2 min-h-[1.5rem]">
+                    {customColors.map((c, i) => (
+                        <div key={`${c}-${i}`} className="group relative">
+                            <Tooltip content={c}>
+                                <button
+                                    className={`w-6 h-6 rounded-full border border-default-200 transition-transform hover:scale-110 flex items-center justify-center`}
+                                    style={{ backgroundColor: c }}
+                                    onClick={() => onChange(c)}
+                                >
+                                    {selectedColor === normalizeHexColor(c) && <Check size={12} className="text-white drop-shadow-md" />}
+                                </button>
+                            </Tooltip>
+                            {onCustomColorDelete && (
+                                <button
+                                    className="absolute -top-1 -right-1 w-3 h-3 bg-danger rounded-full text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm z-10"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onCustomColorDelete(c);
+                                    }}
+                                >
+                                    <X size={8} />
+                                </button>
+                            )}
+                        </div>
+                    ))}
+                    {customColors.length === 0 && <span className="text-xs text-default-300 italic">No custom colors</span>}
                 </div>
             </div>
 

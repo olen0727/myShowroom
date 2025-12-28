@@ -628,6 +628,7 @@ export default function ProjectEditor({ initialProject, onSave, onCancel, standa
                                 }}
                                 customColors={customColors}
                                 onCustomColorAdd={(color) => setCustomColors(prev => [...prev, color])}
+                                onCustomColorDelete={(color) => setCustomColors(prev => prev.filter(c => c !== color))}
                             />
                         </PopoverContent>
                     </Popover>
@@ -644,6 +645,7 @@ export default function ProjectEditor({ initialProject, onSave, onCancel, standa
                                 }}
                                 customColors={customColors}
                                 onCustomColorAdd={(color) => setCustomColors(prev => [...prev, color])}
+                                onCustomColorDelete={(color) => setCustomColors(prev => prev.filter(c => c !== color))}
                             />
                         </PopoverContent>
                     </Popover>
