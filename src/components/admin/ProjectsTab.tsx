@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import {
     Input,
@@ -762,7 +763,13 @@ function SortableProjectItem({
     );
 }
 
-export default function ProjectsTab() {
+type ProjectsTabProps = {
+    initialProjectId?: string;
+    standalone?: boolean;
+};
+
+export default function ProjectsTab({ initialProjectId, standalone = false }: ProjectsTabProps) {
+    const router = useRouter();
     const [projects, setProjects] = useState<Project[]>([]);
     const [loading, setLoading] = useState(true);
     const [filterValue, setFilterValue] = useState("");
@@ -775,6 +782,7 @@ export default function ProjectsTab() {
     const [tagColorMap, setTagColorMap] = useState<Record<string, string>>({});
     const [contentValue, setContentValue] = useState<Value>(EMPTY_PLATE_VALUE);
     const [editorKey, setEditorKey] = useState(0);
+    const [editorLoading, setEditorLoading] = useState(false);
     const contentImageInputRef = useRef<HTMLInputElement | null>(null);
     const dragPathRef = useRef<Path | null>(null);
     const [slashState, setSlashState] = useState<SlashState>({
@@ -797,8 +805,10 @@ export default function ProjectsTab() {
     );
 
     useEffect(() => {
-        fetchProjects();
-    }, []);
+        if (!standalone) {
+            fetchProjects();
+        }
+    }, [standalone]);
 
     useEffect(() => {
         const fetchTagColors = async () => {
@@ -1431,26 +1441,58 @@ export default function ProjectsTab() {
         }
     };
 
-    const openEditor = (project: Partial<Project>) => {
+    const openEditor = useCallback((project: Partial<Project>, openModal = true) => {
         setCurrentProject(project);
         setContentValue(parsePlateValue(project.content));
         setEditorKey((prev) => prev + 1);
-        onOpen();
-    };
+        if (openModal) {
+            onOpen();
+        }
+    }, [onOpen]);
+
+    useEffect(() => {
+        if (!standalone || !initialProjectId) return;
+
+        if (initialProjectId === 'new') {
+            openEditor({
+                title: '',
+                description: '',
+                content: '',
+                images: [],
+                tags: [],
+                category: '?Нчлп',
+            }, false);
+            return;
+        }
+
+        setEditorLoading(true);
+        const fetchProject = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('projects')
+                    .select('*')
+                    .eq('id', initialProjectId)
+                    .single();
+
+                if (error) throw error;
+                openEditor(data, false);
+            } catch (error: any) {
+                console.error('Error fetching project:', error);
+                toast.error('Failed to load project.');
+            } finally {
+                setEditorLoading(false);
+            }
+        };
+
+        fetchProject();
+    }, [initialProjectId, openEditor, standalone]);
 
     const handleCreateNew = () => {
-        openEditor({
-            title: '',
-            description: '',
-            content: '',
-            images: [],
-            tags: [],
-            category: '前端'
-        });
+        router.push('/admin/projects/new');
     };
 
     const handleEdit = (project: Project) => {
-        openEditor(project);
+        router.push(`/admin/projects/${project.id}`);
     };
 
     const handleDelete = async (id: string) => {
@@ -1465,7 +1507,7 @@ export default function ProjectsTab() {
         }
     };
 
-    const handleSave = async (onClose: () => void) => {
+    const handleSave = async (onClose?: () => void) => {
         setSaving(true);
         try {
             const projectData = {
@@ -1487,19 +1529,38 @@ export default function ProjectsTab() {
                     .eq('id', currentProject.id);
                 if (error) throw error;
             } else {
-                // Get max display_order for new item
-                const maxOrder = projects.length > 0
-                    ? Math.max(...projects.map(p => p.display_order || 0))
-                    : 0;
-
-                const { error } = await supabase
+                const { data: orderRows, error: orderError } = await supabase
                     .from('projects')
-                    .insert([{ ...projectData, display_order: maxOrder + 1 }]);
+                    .select('display_order')
+                    .order('display_order', { ascending: false })
+                    .limit(1);
+
+                if (orderError) throw orderError;
+                const maxOrder = orderRows?.[0]?.display_order || 0;
+
+                const { data: inserted, error } = await supabase
+                    .from('projects')
+                    .insert([{ ...projectData, display_order: maxOrder + 1 }])
+                    .select('id')
+                    .single();
                 if (error) throw error;
+
+                if (inserted?.id) {
+                    setCurrentProject((prev) => ({ ...prev, id: inserted.id }));
+                    if (standalone) {
+                        router.replace(`/admin/projects/${inserted.id}`);
+                    }
+                }
             }
 
-            await fetchProjects();
-            onClose();
+            if (!standalone) {
+                await fetchProjects();
+            }
+
+            if (onClose) {
+                onClose();
+            }
+
             toast.success('Project saved successfully');
         } catch (error: any) {
             console.error('Error saving project:', error);
@@ -1616,10 +1677,385 @@ export default function ProjectsTab() {
         }
     };
 
+    const editorTitle = currentProject.id ? 'Edit Project' : 'New Project';
+
+    const editorBody = (
+        <>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                    <Textarea
+                        label="Title"
+                        placeholder="Project Name (supports multiline)"
+                        value={currentProject.title || ''}
+                        onValueChange={val => setCurrentProject({ ...currentProject, title: val })}
+                        variant="bordered"
+                        minRows={1}
+                    />
+                    <Select
+                        label="Category"
+                        placeholder="Select category"
+                        selectedKeys={currentProject.category ? [currentProject.category] : []}
+                        onChange={(e) => setCurrentProject({ ...currentProject, category: e.target.value })}
+                        variant="bordered"
+                    >
+                        <SelectItem key="?Нчлп" value="?Нчлп">?Нчлп</SelectItem>
+                        <SelectItem key="UX" value="UX">UX</SelectItem>
+                    </Select>
+                    <Textarea
+                        label="Description"
+                        placeholder="Project description..."
+                        value={currentProject.description || ''}
+                        onValueChange={val => setCurrentProject({ ...currentProject, description: val })}
+                        variant="bordered"
+                        minRows={5}
+                    />
+                    <div className="space-y-2">
+                        <Input
+                            label="Tags"
+                            placeholder="Press Enter to add tag"
+                            value={tagInput}
+                            onValueChange={setTagInput}
+                            onKeyDown={handleAddTag}
+                            variant="bordered"
+                        />
+                        <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={handleTagDragEnd}
+                        >
+                            <SortableContext
+                                items={currentProject.tags || []}
+                                strategy={rectSortingStrategy}
+                            >
+                                <div className="flex flex-wrap gap-2">
+                                    {(currentProject.tags || []).map((tag) => {
+                                        const tagColor = getTagColor(tag);
+                                        const tagTextColor = getContrastColor(tagColor);
+                                        return (
+                                            <SortableTagItem
+                                                key={tag}
+                                                tag={tag}
+                                                color={tagColor}
+                                                textColor={tagTextColor}
+                                                onRemove={removeTag}
+                                                onColorChange={handleTagColorChange}
+                                            />
+                                        );
+                                    })}
+                                </div>
+                            </SortableContext>
+                        </DndContext>
+                    </div>
+                    <div className="flex gap-4">
+                        <Input
+                            label="Demo Link"
+                            placeholder="https://..."
+                            startContent={<ExternalLink size={16} />}
+                            value={currentProject.demo_url || ''}
+                            onValueChange={val => setCurrentProject({ ...currentProject, demo_url: val })}
+                            variant="bordered"
+                        />
+                        <Input
+                            label="GitHub Link"
+                            placeholder="https://..."
+                            startContent={<Github size={16} />}
+                            value={currentProject.github_url || ''}
+                            onValueChange={val => setCurrentProject({ ...currentProject, github_url: val })}
+                            variant="bordered"
+                        />
+                    </div>
+                </div>
+
+                <div className="space-y-4">
+                    <div className="border-2 border-dashed border-default-300 rounded-xl p-4 text-center hover:border-primary transition-colors cursor-pointer relative">
+                        <input
+                            type="file"
+                            multiple
+                            accept="image/*"
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            onChange={handleImageUpload}
+                            disabled={uploading}
+                        />
+                        <div className="py-8">
+                            <p className="text-default-500">Click or drag images here</p>
+                            {uploading && <p className="text-primary text-sm mt-2">Uploading...</p>}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 max-h-[400px] overflow-y-auto">
+                        {currentProject.images?.map((img, idx) => (
+                            <div key={idx} className="relative group rounded-lg overflow-hidden h-32">
+                                <Image
+                                    src={img}
+                                    alt="Preview"
+                                    fill
+                                    className="object-cover"
+                                />
+                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <Button
+                                        isIconOnly
+                                        color="danger"
+                                        size="sm"
+                                        variant="flat"
+                                        onPress={() => {
+                                            const newImages = [...(currentProject.images || [])];
+                                            newImages.splice(idx, 1);
+                                            setCurrentProject({ ...currentProject, images: newImages });
+                                        }}
+                                    >
+                                        <Trash2 size={16} />
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-default-500">Content</p>
+                    {contentUploading && (
+                        <span className="text-primary text-sm">Uploading image...</span>
+                    )}
+                </div>
+                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                    <Tooltip content="Text">
+                        <Button isIconOnly size="sm" variant="flat" onPress={() => setBlockType(NODES.p)} onMouseDown={preventMouseDown}>
+                            <Type size={16} />
+                        </Button>
+                    </Tooltip>
+                    <Tooltip content="Heading 1">
+                        <Button isIconOnly size="sm" variant="flat" onPress={() => setBlockType(NODES.h1)} onMouseDown={preventMouseDown}>
+                            <Heading1 size={16} />
+                        </Button>
+                    </Tooltip>
+                    <Tooltip content="Heading 2">
+                        <Button isIconOnly size="sm" variant="flat" onPress={() => setBlockType(NODES.h2)} onMouseDown={preventMouseDown}>
+                            <Heading2 size={16} />
+                        </Button>
+                    </Tooltip>
+                    <Tooltip content="Heading 3">
+                        <Button isIconOnly size="sm" variant="flat" onPress={() => setBlockType(NODES.h3)} onMouseDown={preventMouseDown}>
+                            <Heading3 size={16} />
+                        </Button>
+                    </Tooltip>
+                    <div className="h-5 w-px bg-white/10" />
+                    <Tooltip content="Bulleted list">
+                        <Button isIconOnly size="sm" variant="flat" onPress={() => editor && toggleList(editor, { listStyleType: ListStyleType.Disc })} onMouseDown={preventMouseDown}>
+                            <List size={16} />
+                        </Button>
+                    </Tooltip>
+                    <Tooltip content="Numbered list">
+                        <Button isIconOnly size="sm" variant="flat" onPress={() => editor && toggleList(editor, { listStyleType: ListStyleType.Decimal })} onMouseDown={preventMouseDown}>
+                            <ListOrdered size={16} />
+                        </Button>
+                    </Tooltip>
+                    <Tooltip content="Quote">
+                        <Button isIconOnly size="sm" variant="flat" onPress={() => setBlockType(NODES.blockquote)} onMouseDown={preventMouseDown}>
+                            <Quote size={16} />
+                        </Button>
+                    </Tooltip>
+                    <Tooltip content="Callout">
+                        <Button isIconOnly size="sm" variant="flat" onPress={() => setBlockType(NODES.callout)} onMouseDown={preventMouseDown}>
+                            <MessageSquare size={16} />
+                        </Button>
+                    </Tooltip>
+                    <Tooltip content="Code block">
+                        <Button isIconOnly size="sm" variant="flat" onPress={() => setBlockType(NODES.codeBlock)} onMouseDown={preventMouseDown}>
+                            <Code size={16} />
+                        </Button>
+                    </Tooltip>
+                    <Tooltip content="Table">
+                        <Button isIconOnly size="sm" variant="flat" onPress={() => insertTable()} onMouseDown={preventMouseDown}>
+                            <Table2 size={16} />
+                        </Button>
+                    </Tooltip>
+                    <Tooltip content="Divider">
+                        <Button isIconOnly size="sm" variant="flat" onPress={insertDivider} onMouseDown={preventMouseDown}>
+                            <Minus size={16} />
+                        </Button>
+                    </Tooltip>
+                    <Tooltip content="Image">
+                        <Button isIconOnly size="sm" variant="flat" onPress={openContentImagePicker} onMouseDown={preventMouseDown}>
+                            <ImagePlus size={16} />
+                        </Button>
+                    </Tooltip>
+                    <div className="h-5 w-px bg-white/10" />
+                    <Tooltip content="Indent">
+                        <Button isIconOnly size="sm" variant="flat" onPress={() => handleIndentAction(false)} onMouseDown={preventMouseDown}>
+                            <IndentIncrease size={16} />
+                        </Button>
+                    </Tooltip>
+                    <Tooltip content="Outdent">
+                        <Button isIconOnly size="sm" variant="flat" onPress={() => handleIndentAction(true)} onMouseDown={preventMouseDown}>
+                            <IndentDecrease size={16} />
+                        </Button>
+                    </Tooltip>
+                    <div className="h-5 w-px bg-white/10" />
+                    <Tooltip content="Bold">
+                        <Button isIconOnly size="sm" variant="flat" onPress={() => toggleMark('bold')} onMouseDown={preventMouseDown}>
+                            <Bold size={16} />
+                        </Button>
+                    </Tooltip>
+                    <Tooltip content="Italic">
+                        <Button isIconOnly size="sm" variant="flat" onPress={() => toggleMark('italic')} onMouseDown={preventMouseDown}>
+                            <Italic size={16} />
+                        </Button>
+                    </Tooltip>
+                    <Tooltip content="Underline">
+                        <Button isIconOnly size="sm" variant="flat" onPress={() => toggleMark('underline')} onMouseDown={preventMouseDown}>
+                            <Underline size={16} />
+                        </Button>
+                    </Tooltip>
+                    <Tooltip content="Strikethrough">
+                        <Button isIconOnly size="sm" variant="flat" onPress={() => toggleMark('strikethrough')} onMouseDown={preventMouseDown}>
+                            <Strikethrough size={16} />
+                        </Button>
+                    </Tooltip>
+                    <Tooltip content="Inline code">
+                        <Button isIconOnly size="sm" variant="flat" onPress={() => toggleMark('code')} onMouseDown={preventMouseDown}>
+                            <Code size={16} />
+                        </Button>
+                    </Tooltip>
+                    <Tooltip content="Link">
+                        <Button isIconOnly size="sm" variant="flat" onPress={handleInsertLink} onMouseDown={preventMouseDown}>
+                            <LinkIcon size={16} />
+                        </Button>
+                    </Tooltip>
+                    <div className="h-5 w-px bg-white/10" />
+                    <div className="flex items-center gap-2">
+                        <Palette size={14} className="text-default-400" />
+                        {textColors.map((color) => (
+                            <button
+                                key={color}
+                                type="button"
+                                className="h-5 w-5 rounded border border-white/20"
+                                style={{ backgroundColor: color }}
+                                onMouseDown={(event) => {
+                                    event.preventDefault();
+                                    setMarkValue('color', color);
+                                }}
+                            />
+                        ))}
+                        <Button size="sm" variant="flat" onPress={() => setMarkValue('color')} onMouseDown={preventMouseDown}>
+                            Clear
+                        </Button>
+                        <Button size="sm" variant="flat" onPress={handleCustomColor} onMouseDown={preventMouseDown}>
+                            Custom
+                        </Button>
+                    </div>
+                    <div className="h-5 w-px bg-white/10" />
+                    <div className="flex items-center gap-2">
+                        <Highlighter size={14} className="text-default-400" />
+                        {highlightColors.map((color) => (
+                            <button
+                                key={color}
+                                type="button"
+                                className="h-5 w-5 rounded border border-white/20"
+                                style={{ backgroundColor: color }}
+                                onMouseDown={(event) => {
+                                    event.preventDefault();
+                                    setMarkValue('backgroundColor', color);
+                                }}
+                            />
+                        ))}
+                        <Button size="sm" variant="flat" onPress={() => setMarkValue('backgroundColor')} onMouseDown={preventMouseDown}>
+                            Clear
+                        </Button>
+                        <Button size="sm" variant="flat" onPress={handleCustomHighlight} onMouseDown={preventMouseDown}>
+                            Custom
+                        </Button>
+                    </div>
+                </div>
+                <div className="border border-white/10 rounded-xl bg-white/5">
+                    <Plate editor={editor} onValueChange={handleEditorChange} renderLeaf={renderLeaf}>
+                        <PlateContent
+                            className="min-h-[240px] px-4 py-3 text-sm outline-none"
+                            placeholder="Write here. Type / for blocks or paste images to upload."
+                            spellCheck
+                            onKeyDown={handleEditorKeyDown}
+                        />
+                        {slashState.open && slashRect && (
+                            <div
+                                className="fixed z-[60] w-72 rounded-xl border border-white/10 bg-black/90 p-2 text-sm text-white shadow-xl backdrop-blur"
+                                style={{
+                                    top: slashRect.bottom + 8,
+                                    left: slashRect.left,
+                                }}
+                                onMouseDown={(event) => event.preventDefault()}
+                            >
+                                <p className="px-2 pb-2 text-xs uppercase tracking-wide text-default-400">Commands</p>
+                                <div className="max-h-60 overflow-y-auto">
+                                    {filteredSlashItems.length === 0 ? (
+                                        <div className="px-2 py-3 text-xs text-default-500">No matches</div>
+                                    ) : (
+                                        filteredSlashItems.map((item, index) => (
+                                            <button
+                                                key={item.id}
+                                                type="button"
+                                                className={`flex w-full flex-col gap-1 rounded-lg px-2 py-2 text-left transition-colors ${index === slashIndex ? 'bg-white/10' : 'hover:bg-white/5'}`}
+                                                onMouseDown={(event) => {
+                                                    event.preventDefault();
+                                                    handleSlashSelect(item);
+                                                }}
+                                            >
+                                                <span className="font-medium">{item.label}</span>
+                                                <span className="text-xs text-default-400">{item.description}</span>
+                                            </button>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                        <input
+                            ref={contentImageInputRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleContentImagePick}
+                        />
+                    </Plate>
+                </div>
+                <p className="text-xs text-default-500">
+                    WYSIWYG editor. Use the toolbar, type "/" for commands, and Tab/Shift+Tab for hierarchy.
+                </p>
+            </div>
+        </>
+    );
+
     const filteredProjects = projects.filter(project =>
         project.title.toLowerCase().includes(filterValue.toLowerCase()) ||
         project.category?.toLowerCase().includes(filterValue.toLowerCase())
     );
+
+    if (standalone) {
+        return (
+            <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h2 className="text-xl font-semibold">{editorTitle}</h2>
+                        <p className="text-sm text-default-500">Edit project details and content.</p>
+                    </div>
+                    <Button variant="flat" onPress={() => router.push('/admin/projects')}>
+                        Back
+                    </Button>
+                </div>
+
+                {editorLoading ? (
+                    <div className="text-default-500">Loading project...</div>
+                ) : (
+                    <div className="space-y-6">{editorBody}</div>
+                )}
+
+                <div className="flex justify-end">
+                    <Button color="primary" onPress={() => handleSave()} isLoading={saving}>
+                        Save Project
+                    </Button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
@@ -1686,349 +2122,10 @@ export default function ProjectsTab() {
                     {(onClose) => (
                         <>
                             <ModalHeader className="flex flex-col gap-1">
-                                {currentProject.id ? 'Edit Project' : 'New Project'}
+                                {editorTitle}
                             </ModalHeader>
                             <ModalBody>
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                    <div className="space-y-4">
-                                        <Textarea
-                                            label="Title"
-                                            placeholder="Project Name (supports multiline)"
-                                            value={currentProject.title || ''}
-                                            onValueChange={val => setCurrentProject({ ...currentProject, title: val })}
-                                            variant="bordered"
-                                            minRows={1}
-                                        />
-                                        <Select
-                                            label="Category"
-                                            placeholder="Select category"
-                                            selectedKeys={currentProject.category ? [currentProject.category] : []}
-                                            onChange={(e) => setCurrentProject({ ...currentProject, category: e.target.value })}
-                                            variant="bordered"
-                                        >
-                                            <SelectItem key="前端" value="前端">前端</SelectItem>
-                                            <SelectItem key="UX" value="UX">UX</SelectItem>
-                                        </Select>
-                                        <Textarea
-                                            label="Description"
-                                            placeholder="Project description..."
-                                            value={currentProject.description || ''}
-                                            onValueChange={val => setCurrentProject({ ...currentProject, description: val })}
-                                            variant="bordered"
-                                            minRows={5}
-                                        />
-                                        <div className="space-y-2">
-                                            <Input
-                                                label="Tags"
-                                                placeholder="Press Enter to add tag"
-                                                value={tagInput}
-                                                onValueChange={setTagInput}
-                                                onKeyDown={handleAddTag}
-                                                variant="bordered"
-                                            />
-                                            <DndContext
-                                                sensors={sensors}
-                                                collisionDetection={closestCenter}
-                                                onDragEnd={handleTagDragEnd}
-                                            >
-                                                <SortableContext
-                                                    items={currentProject.tags || []}
-                                                    strategy={rectSortingStrategy}
-                                                >
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {(currentProject.tags || []).map((tag) => {
-                                                            const tagColor = getTagColor(tag);
-                                                            const tagTextColor = getContrastColor(tagColor);
-                                                            return (
-                                                                <SortableTagItem
-                                                                    key={tag}
-                                                                    tag={tag}
-                                                                    color={tagColor}
-                                                                    textColor={tagTextColor}
-                                                                    onRemove={removeTag}
-                                                                    onColorChange={handleTagColorChange}
-                                                                />
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </SortableContext>
-                                            </DndContext>
-                                        </div>
-                                        <div className="flex gap-4">
-                                            <Input
-                                                label="Demo Link"
-                                                placeholder="https://..."
-                                                startContent={<ExternalLink size={16} />}
-                                                value={currentProject.demo_url || ''}
-                                                onValueChange={val => setCurrentProject({ ...currentProject, demo_url: val })}
-                                                variant="bordered"
-                                            />
-                                            <Input
-                                                label="GitHub Link"
-                                                placeholder="https://..."
-                                                startContent={<Github size={16} />}
-                                                value={currentProject.github_url || ''}
-                                                onValueChange={val => setCurrentProject({ ...currentProject, github_url: val })}
-                                                variant="bordered"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        <div className="border-2 border-dashed border-default-300 rounded-xl p-4 text-center hover:border-primary transition-colors cursor-pointer relative">
-                                            <input
-                                                type="file"
-                                                multiple
-                                                accept="image/*"
-                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                                onChange={handleImageUpload}
-                                                disabled={uploading}
-                                            />
-                                            <div className="py-8">
-                                                <p className="text-default-500">Click or drag images here</p>
-                                                {uploading && <p className="text-primary text-sm mt-2">Uploading...</p>}
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-4 max-h-[400px] overflow-y-auto">
-                                            {currentProject.images?.map((img, idx) => (
-                                                <div key={idx} className="relative group rounded-lg overflow-hidden h-32">
-                                                    <Image
-                                                        src={img}
-                                                        alt="Preview"
-                                                        fill
-                                                        className="object-cover"
-                                                    />
-                                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                        <Button
-                                                            isIconOnly
-                                                            color="danger"
-                                                            size="sm"
-                                                            variant="flat"
-                                                            onPress={() => {
-                                                                const newImages = [...(currentProject.images || [])];
-                                                                newImages.splice(idx, 1);
-                                                                setCurrentProject({ ...currentProject, images: newImages });
-                                                            }}
-                                                        >
-                                                            <Trash2 size={16} />
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-3">
-                                    <div className="flex items-center justify-between">
-                                        <p className="text-sm font-medium text-default-500">Content</p>
-                                        {contentUploading && (
-                                            <span className="text-primary text-sm">Uploading image...</span>
-                                        )}
-                                    </div>
-                                    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                                        <Tooltip content="Text">
-                                            <Button isIconOnly size="sm" variant="flat" onPress={() => setBlockType(NODES.p)} onMouseDown={preventMouseDown}>
-                                                <Type size={16} />
-                                            </Button>
-                                        </Tooltip>
-                                        <Tooltip content="Heading 1">
-                                            <Button isIconOnly size="sm" variant="flat" onPress={() => setBlockType(NODES.h1)} onMouseDown={preventMouseDown}>
-                                                <Heading1 size={16} />
-                                            </Button>
-                                        </Tooltip>
-                                        <Tooltip content="Heading 2">
-                                            <Button isIconOnly size="sm" variant="flat" onPress={() => setBlockType(NODES.h2)} onMouseDown={preventMouseDown}>
-                                                <Heading2 size={16} />
-                                            </Button>
-                                        </Tooltip>
-                                        <Tooltip content="Heading 3">
-                                            <Button isIconOnly size="sm" variant="flat" onPress={() => setBlockType(NODES.h3)} onMouseDown={preventMouseDown}>
-                                                <Heading3 size={16} />
-                                            </Button>
-                                        </Tooltip>
-                                        <div className="h-5 w-px bg-white/10" />
-                                        <Tooltip content="Bulleted list">
-                                            <Button isIconOnly size="sm" variant="flat" onPress={() => editor && toggleList(editor, { listStyleType: ListStyleType.Disc })} onMouseDown={preventMouseDown}>
-                                                <List size={16} />
-                                            </Button>
-                                        </Tooltip>
-                                        <Tooltip content="Numbered list">
-                                            <Button isIconOnly size="sm" variant="flat" onPress={() => editor && toggleList(editor, { listStyleType: ListStyleType.Decimal })} onMouseDown={preventMouseDown}>
-                                                <ListOrdered size={16} />
-                                            </Button>
-                                        </Tooltip>
-                                        <Tooltip content="Quote">
-                                            <Button isIconOnly size="sm" variant="flat" onPress={() => setBlockType(NODES.blockquote)} onMouseDown={preventMouseDown}>
-                                                <Quote size={16} />
-                                            </Button>
-                                        </Tooltip>
-                                        <Tooltip content="Callout">
-                                            <Button isIconOnly size="sm" variant="flat" onPress={() => setBlockType(NODES.callout)} onMouseDown={preventMouseDown}>
-                                                <MessageSquare size={16} />
-                                            </Button>
-                                        </Tooltip>
-                                        <Tooltip content="Code block">
-                                            <Button isIconOnly size="sm" variant="flat" onPress={() => setBlockType(NODES.codeBlock)} onMouseDown={preventMouseDown}>
-                                                <Code size={16} />
-                                            </Button>
-                                        </Tooltip>
-                                        <Tooltip content="Table">
-                                            <Button isIconOnly size="sm" variant="flat" onPress={() => insertTable()} onMouseDown={preventMouseDown}>
-                                                <Table2 size={16} />
-                                            </Button>
-                                        </Tooltip>
-                                        <Tooltip content="Divider">
-                                            <Button isIconOnly size="sm" variant="flat" onPress={insertDivider} onMouseDown={preventMouseDown}>
-                                                <Minus size={16} />
-                                            </Button>
-                                        </Tooltip>
-                                        <Tooltip content="Image">
-                                            <Button isIconOnly size="sm" variant="flat" onPress={openContentImagePicker} onMouseDown={preventMouseDown}>
-                                                <ImagePlus size={16} />
-                                            </Button>
-                                        </Tooltip>
-                                        <div className="h-5 w-px bg-white/10" />
-                                        <Tooltip content="Indent">
-                                            <Button isIconOnly size="sm" variant="flat" onPress={() => handleIndentAction(false)} onMouseDown={preventMouseDown}>
-                                                <IndentIncrease size={16} />
-                                            </Button>
-                                        </Tooltip>
-                                        <Tooltip content="Outdent">
-                                            <Button isIconOnly size="sm" variant="flat" onPress={() => handleIndentAction(true)} onMouseDown={preventMouseDown}>
-                                                <IndentDecrease size={16} />
-                                            </Button>
-                                        </Tooltip>
-                                        <div className="h-5 w-px bg-white/10" />
-                                        <Tooltip content="Bold">
-                                            <Button isIconOnly size="sm" variant="flat" onPress={() => toggleMark('bold')} onMouseDown={preventMouseDown}>
-                                                <Bold size={16} />
-                                            </Button>
-                                        </Tooltip>
-                                        <Tooltip content="Italic">
-                                            <Button isIconOnly size="sm" variant="flat" onPress={() => toggleMark('italic')} onMouseDown={preventMouseDown}>
-                                                <Italic size={16} />
-                                            </Button>
-                                        </Tooltip>
-                                        <Tooltip content="Underline">
-                                            <Button isIconOnly size="sm" variant="flat" onPress={() => toggleMark('underline')} onMouseDown={preventMouseDown}>
-                                                <Underline size={16} />
-                                            </Button>
-                                        </Tooltip>
-                                        <Tooltip content="Strikethrough">
-                                            <Button isIconOnly size="sm" variant="flat" onPress={() => toggleMark('strikethrough')} onMouseDown={preventMouseDown}>
-                                                <Strikethrough size={16} />
-                                            </Button>
-                                        </Tooltip>
-                                        <Tooltip content="Inline code">
-                                            <Button isIconOnly size="sm" variant="flat" onPress={() => toggleMark('code')} onMouseDown={preventMouseDown}>
-                                                <Code size={16} />
-                                            </Button>
-                                        </Tooltip>
-                                        <Tooltip content="Link">
-                                            <Button isIconOnly size="sm" variant="flat" onPress={handleInsertLink} onMouseDown={preventMouseDown}>
-                                                <LinkIcon size={16} />
-                                            </Button>
-                                        </Tooltip>
-                                        <div className="h-5 w-px bg-white/10" />
-                                        <div className="flex items-center gap-2">
-                                            <Palette size={14} className="text-default-400" />
-                                            {textColors.map((color) => (
-                                                <button
-                                                    key={color}
-                                                    type="button"
-                                                    className="h-5 w-5 rounded border border-white/20"
-                                                    style={{ backgroundColor: color }}
-                                                    onMouseDown={(event) => {
-                                                        event.preventDefault();
-                                                        setMarkValue('color', color);
-                                                    }}
-                                                />
-                                            ))}
-                                            <Button size="sm" variant="flat" onPress={() => setMarkValue('color')} onMouseDown={preventMouseDown}>
-                                                Clear
-                                            </Button>
-                                            <Button size="sm" variant="flat" onPress={handleCustomColor} onMouseDown={preventMouseDown}>
-                                                Custom
-                                            </Button>
-                                        </div>
-                                        <div className="h-5 w-px bg-white/10" />
-                                        <div className="flex items-center gap-2">
-                                            <Highlighter size={14} className="text-default-400" />
-                                            {highlightColors.map((color) => (
-                                                <button
-                                                    key={color}
-                                                    type="button"
-                                                    className="h-5 w-5 rounded border border-white/20"
-                                                    style={{ backgroundColor: color }}
-                                                    onMouseDown={(event) => {
-                                                        event.preventDefault();
-                                                        setMarkValue('backgroundColor', color);
-                                                    }}
-                                                />
-                                            ))}
-                                            <Button size="sm" variant="flat" onPress={() => setMarkValue('backgroundColor')} onMouseDown={preventMouseDown}>
-                                                Clear
-                                            </Button>
-                                            <Button size="sm" variant="flat" onPress={handleCustomHighlight} onMouseDown={preventMouseDown}>
-                                                Custom
-                                            </Button>
-                                        </div>
-                                    </div>
-                                    <div className="border border-white/10 rounded-xl bg-white/5">
-                                        <Plate editor={editor} onValueChange={handleEditorChange} renderLeaf={renderLeaf}>
-                                            <PlateContent
-                                                className="min-h-[240px] px-4 py-3 text-sm outline-none"
-                                                placeholder="Write here. Type / for blocks or paste images to upload."
-                                                spellCheck
-                                                onKeyDown={handleEditorKeyDown}
-                                            />
-                                            {slashState.open && slashRect && (
-                                                <div
-                                                    className="fixed z-[60] w-72 rounded-xl border border-white/10 bg-black/90 p-2 text-sm text-white shadow-xl backdrop-blur"
-                                                    style={{
-                                                        top: slashRect.bottom + 8,
-                                                        left: slashRect.left,
-                                                    }}
-                                                    onMouseDown={(event) => event.preventDefault()}
-                                                >
-                                                    <p className="px-2 pb-2 text-xs uppercase tracking-wide text-default-400">Commands</p>
-                                                    <div className="max-h-60 overflow-y-auto">
-                                                        {filteredSlashItems.length === 0 ? (
-                                                            <div className="px-2 py-3 text-xs text-default-500">No matches</div>
-                                                        ) : (
-                                                            filteredSlashItems.map((item, index) => (
-                                                                <button
-                                                                    key={item.id}
-                                                                    type="button"
-                                                                    className={`flex w-full flex-col gap-1 rounded-lg px-2 py-2 text-left transition-colors ${index === slashIndex ? 'bg-white/10' : 'hover:bg-white/5'}`}
-                                                                    onMouseDown={(event) => {
-                                                                        event.preventDefault();
-                                                                        handleSlashSelect(item);
-                                                                    }}
-                                                                >
-                                                                    <span className="font-medium">{item.label}</span>
-                                                                    <span className="text-xs text-default-400">{item.description}</span>
-                                                                </button>
-                                                            ))
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            )}
-                                            <input
-                                                ref={contentImageInputRef}
-                                                type="file"
-                                                accept="image/*"
-                                                className="hidden"
-                                                onChange={handleContentImagePick}
-                                            />
-                                        </Plate>
-                                    </div>
-                                    <p className="text-xs text-default-500">
-                                        WYSIWYG editor. Use the toolbar, type "/" for commands, and Tab/Shift+Tab for hierarchy.
-                                    </p>
-                                </div>
+                                {editorBody}
                             </ModalBody>
                             <ModalFooter>
                                 <Button color="danger" variant="flat" onPress={onClose}>

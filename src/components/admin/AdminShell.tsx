@@ -35,7 +35,7 @@ export default function AdminShell({ children }: AdminShellProps) {
     const pathname = usePathname();
 
     const currentKey = useMemo(() => {
-        const match = adminTabs.find((tab) => tab.path === pathname);
+        const match = adminTabs.find((tab) => pathname === tab.path || pathname.startsWith(`${tab.path}/`));
         return match?.key ?? 'profile';
     }, [pathname]);
 
