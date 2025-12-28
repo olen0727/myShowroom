@@ -8,6 +8,7 @@ import Projects from '@/components/Projects';
 import Contact from '@/components/Contact';
 import Experience from '@/components/Experience';
 import LoadingScreen from '@/components/LoadingScreen';
+import ProjectDetailOverlay from '@/components/projects/ProjectDetailOverlay';
 
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -16,12 +17,18 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.has('projectId')) {
+      setIsLoading(false);
+      return;
+    }
+
     // Force scroll to top on refresh
-    if (typeof window !== 'undefined') {
-      window.scrollTo(0, 0);
-      if ('scrollRestoration' in history) {
-        history.scrollRestoration = 'manual';
-      }
+    window.scrollTo(0, 0);
+    if ('scrollRestoration' in history) {
+      history.scrollRestoration = 'manual';
     }
 
     // Simulate loading time for assets and data
@@ -46,6 +53,7 @@ export default function Home() {
       <Experience />
       <Contact />
       <Footer />
+      <ProjectDetailOverlay />
     </main>
   );
 }

@@ -7,6 +7,17 @@
     overflow: hidden;
 }
 
+.overlayPanel {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    background: #050505;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    box-shadow: -20px 0 50px rgba(0, 0, 0, 0.45);
+    will-change: transform;
+}
+
 .background {
     position: absolute;
     inset: 0;

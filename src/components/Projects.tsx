@@ -298,7 +298,7 @@ export default function Projects() {
                                 })}
                             </div>
                             <div className={styles.links}>
-                                <Link href={`/projects/${project.id}`} className={styles.detailBtn}>
+                                <Link href={`/?projectId=${project.id}`} className={styles.detailBtn} scroll={false}>
                                     Details
                                 </Link>
                                 {project.demo_url && (
