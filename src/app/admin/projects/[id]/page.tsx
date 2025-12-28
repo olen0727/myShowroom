@@ -48,7 +48,7 @@ export default function EditProjectPage({ params }: { params: { id: string } }) 
         <AdminShell>
             <ProjectEditor
                 initialProject={project}
-                onSave={() => router.push('/admin/projects')}
+                onSave={() => { }}
                 onCancel={() => router.push('/admin/projects')}
                 standalone
             />

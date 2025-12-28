@@ -10,7 +10,7 @@ export default function NewProjectPage() {
     return (
         <AdminShell>
             <ProjectEditor
-                onSave={() => router.push('/admin/projects')}
+                onSave={(savedProject) => router.replace(`/admin/projects/${savedProject.id}`)}
                 onCancel={() => router.push('/admin/projects')}
                 standalone
             />

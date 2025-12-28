@@ -370,13 +370,19 @@ export default function ProjectEditor({ initialProject, onSave, onCancel, standa
                 display_order: project.display_order ?? 0
             };
 
-            const { error } = await supabase
+            const { data, error } = await supabase
                 .from('projects')
-                .upsert(payload);
+                .upsert(payload)
+                .select()
+                .single();
 
             if (error) throw error;
             toast.success('Project saved successfully');
-            if (onSave) onSave(payload as Project);
+
+            // Update local state with the returned data (important for new projects getting an ID)
+            setProject(data);
+
+            if (onSave) onSave(data as Project);
         } catch (error: any) {
             console.error('Error saving project:', error);
             toast.error('Failed to save project');

@@ -28,6 +28,8 @@
 │   ├── components/                # UI 元件（前台 + 後台）
 │   │   ├── admin/                  # 後台分頁元件
 │   │   │   ├── AdminShell.tsx       # 後台共用 Shell（驗證 + Tabs 導覽）
+│   │   │   ├── shared/              # 後台共用元件
+│   │   │   │   └── ColorPicker.tsx  # 顏色選擇器（Default + Custom colors）
 │   │   ├── Hero.tsx, About.tsx...  # 前台區塊元件
 │   │   └── *.module.css            # 各區塊的 CSS Modules
 │   └── lib/
@@ -95,7 +97,20 @@ Buckets：
 補充：
 - project-images/content/：Plate 內容內貼上圖片的上傳路徑
 
-## 5. 外部整合 / API
+- project-images/content/：Plate 內容內貼上圖片的上傳路徑
+
+## 5. 核心功能更新 (2025-12-28)
+### 5.1 專案編輯器 (ProjectEditor)
+*   **工具列增強**：恢復並強化了文字樣式（粗體、斜體等）、標題、區塊引用、程式碼區塊等功能。
+*   **顏色選擇器 (ColorPicker)**：
+    *   新增 `src/components/admin/shared/ColorPicker.tsx` 元件。
+    *   使用 Popover 介面取代原生 input。
+    *   支援「預設顏色」（格狀排列）與「自訂顏色」（包含歷史記錄）。
+*   **Markdown 表格支援**：
+    *   新增 `parseMarkdownTable` (lib/utils) 解析器。
+    *   `tablePastePlugin` 支援從 Notion 或 Markdown 來源貼上表格。
+
+## 6. 外部整合 / API
 服務：Supabase
 用途：驗證、資料庫、儲存
 整合方式：Supabase JS SDK（@supabase/supabase-js）
