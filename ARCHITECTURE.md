@@ -8,6 +8,15 @@
 │   ├── app/                       # Next.js App Router pages/layouts
 │   │   ├── (site)/layout.tsx       # 可選的站台版型包裝
 │   │   ├── admin/                  # 後台登入 + 管理介面路由
+│   │   │   ├── login/page.tsx       # 後台登入
+│   │   │   ├── dashboard/page.tsx   # 舊路由轉址到 /admin/profile
+│   │   │   ├── profile/page.tsx     # 後台分頁路由（獨立）
+│   │   │   ├── projects/page.tsx
+│   │   │   ├── carousel/page.tsx
+│   │   │   ├── experience/page.tsx
+│   │   │   ├── skills/page.tsx
+│   │   │   ├── socials/page.tsx
+│   │   │   └── messages/page.tsx
 │   │   ├── layout.tsx              # 根版型
 │   │   ├── page.tsx                # 主頁
 │   │   ├── globals.css             # 全域樣式
@@ -15,6 +24,7 @@
 │   │   └── global-error.tsx        # 全域錯誤邊界
 │   ├── components/                # UI 元件（前台 + 後台）
 │   │   ├── admin/                  # 後台分頁元件
+│   │   │   ├── AdminShell.tsx       # 後台共用 Shell（驗證 + Tabs 導覽）
 │   │   ├── Hero.tsx, About.tsx...  # 前台區塊元件
 │   │   └── *.module.css            # 各區塊的 CSS Modules
 │   └── lib/
@@ -41,7 +51,7 @@
 ### 3.1 前端（Web App）
 名稱：My Showroom Web App
 說明：單頁作品集站點，包含動畫區塊（Hero/About/Projects/Experience/Contact），另有後台管理介面提供內容 CRUD、排序與上傳。
-技術：Next.js（App Router）、React、TypeScript、Tailwind CSS、CSS Modules、NextUI、Framer Motion、Swiper、DnD Kit
+技術：Next.js（App Router）、React、TypeScript、Tailwind CSS、CSS Modules、NextUI、Framer Motion、Swiper、DnD Kit、Plate（WYSIWYG 編輯器）
 部署：Vercel 或任何相容 Next.js 的主機
 
 ### 3.2 後端服務
@@ -66,6 +76,8 @@
 - skills
 - social_links
 - messages
+補充欄位：
+- projects.content：Plate 編輯器內容（建議 json/jsonb）
 
 ### 4.2 Storage（Supabase）
 名稱：作品圖片
@@ -74,6 +86,8 @@
 Buckets：
 - project-images
 - carousel-images
+補充：
+- project-images/content/：Plate 內容內貼上圖片的上傳路徑
 
 ## 5. 外部整合 / API
 服務：Supabase
@@ -113,7 +127,7 @@ CI/CD：未定義（若使用 GitHub Actions/Vercel 請補上）
 專案名稱：My Showroom
 Repository URL：（未提供）
 主要聯絡人/團隊：（未提供）
-最後更新日期：2025-02-01
+最後更新日期：2025-12-28
 
 ## 11. 詞彙 / 縮寫
 RLS：Row-Level Security（Supabase）
