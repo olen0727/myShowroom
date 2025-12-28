@@ -140,35 +140,37 @@ export default function CarouselList() {
                 </Button>
             </div>
 
-            {filterValue ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredProjects.map((project) => (
-                        <CarouselItem
-                            key={project.id}
-                            project={project}
-                            onEdit={handleEdit}
-                            onDelete={handleDelete}
-                            tagColorMap={tagColorMap}
-                        />
-                    ))}
-                </div>
-            ) : (
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                    <SortableContext items={projects.map(p => p.id)} strategy={rectSortingStrategy}>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {projects.map((project) => (
-                                <CarouselItem
-                                    key={project.id}
-                                    project={project}
-                                    onEdit={handleEdit}
-                                    onDelete={handleDelete}
-                                    tagColorMap={tagColorMap}
-                                />
-                            ))}
-                        </div>
-                    </SortableContext>
-                </DndContext>
-            )}
-        </div>
+            {
+                filterValue ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {filteredProjects.map((project) => (
+                            <CarouselItem
+                                key={project.id}
+                                project={project}
+                                onEdit={handleEdit}
+                                onDelete={handleDelete}
+                                tagColorMap={tagColorMap}
+                            />
+                        ))}
+                    </div>
+                ) : (
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                        <SortableContext items={projects.map(p => p.id)} strategy={rectSortingStrategy}>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {projects.map((project) => (
+                                    <CarouselItem
+                                        key={project.id}
+                                        project={project}
+                                        onEdit={handleEdit}
+                                        onDelete={handleDelete}
+                                        tagColorMap={tagColorMap}
+                                    />
+                                ))}
+                            </div>
+                        </SortableContext>
+                    </DndContext>
+                )
+            }
+        </div >
     );
 }

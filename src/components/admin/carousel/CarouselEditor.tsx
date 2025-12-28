@@ -144,7 +144,7 @@ export default function CarouselEditor({ initialProject, onSave, onCancel, stand
             setSaving(true);
             const payload = {
                 ...project,
-                updated_at: new Date().toISOString()
+                // updated_at: new Date().toISOString() // Column does not exist
             };
 
             if (!project.id) {
@@ -168,8 +168,8 @@ export default function CarouselEditor({ initialProject, onSave, onCancel, stand
             toast.success('Project saved successfully');
             if (onSave && data) onSave(data as CarouselProject);
         } catch (error: any) {
-            console.error('Error saving project:', error);
-            toast.error('Failed to save project');
+            console.error('Error saving carousel :', error);
+            toast.error('Failed to save carousel project');
         } finally {
             setSaving(false);
         }
@@ -184,7 +184,7 @@ export default function CarouselEditor({ initialProject, onSave, onCancel, stand
                 </div>
                 <div className="flex gap-2">
                     {onCancel && <Button variant="flat" onPress={onCancel}>Cancel</Button>}
-                    <Button color="primary" onPress={handleSave} isLoading={saving}>Save Project</Button>
+                    <Button color="primary" onPress={handleSave} isLoading={saving}>Save Carousel</Button>
                 </div>
             </div>
 
