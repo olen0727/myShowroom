@@ -7,12 +7,15 @@
 ├── src/
 │   ├── app/                       # Next.js App Router pages/layouts
 │   │   ├── (site)/layout.tsx       # 可選的站台版型包裝
+│   │   ├── (site)/projects/[id]/page.tsx # 前台專案詳情頁（獨立路由）
 │   │   ├── admin/                  # 後台登入 + 管理介面路由
 │   │   │   ├── login/page.tsx       # 後台登入
 │   │   │   ├── dashboard/page.tsx   # 舊路由轉址到 /admin/profile
 │   │   │   ├── profile/page.tsx     # 後台分頁路由（獨立）
 │   │   │   ├── projects/page.tsx
+│   │   │   ├── projects/[id]/page.tsx # 後台專案獨立編輯頁
 │   │   │   ├── carousel/page.tsx
+│   │   │   ├── carousel/[id]/page.tsx # 後台輪播獨立編輯頁
 │   │   │   ├── experience/page.tsx
 │   │   │   ├── skills/page.tsx
 │   │   │   ├── socials/page.tsx
@@ -51,6 +54,7 @@
 ### 3.1 前端（Web App）
 名稱：My Showroom Web App
 說明：單頁作品集站點，包含動畫區塊（Hero/About/Projects/Experience/Contact），另有後台管理介面提供內容 CRUD、排序與上傳。
+補充：專案列表提供詳情路由，後台專案/輪播改為獨立編輯頁面。
 技術：Next.js（App Router）、React、TypeScript、Tailwind CSS、CSS Modules、NextUI、Framer Motion、Swiper、DnD Kit、Plate（WYSIWYG 編輯器）
 部署：Vercel 或任何相容 Next.js 的主機
 
@@ -72,12 +76,14 @@
 - profile
 - projects
 - carousel_projects
+- project_tag_colors
 - experience
 - skills
 - social_links
 - messages
 補充欄位：
 - projects.content：Plate 編輯器內容（建議 json/jsonb）
+- project_tag_colors：跨 projects / carousel_projects 共用的 tag 顏色設定
 
 ### 4.2 Storage（Supabase）
 名稱：作品圖片

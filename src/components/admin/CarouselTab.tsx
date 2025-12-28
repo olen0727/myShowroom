@@ -1,6 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import {
     Input,
@@ -50,15 +52,142 @@ interface CarouselProject {
     display_order?: number;
 }
 
+const TAG_COLORS_TABLE = 'project_tag_colors';
+const defaultTagColors = ['#1f2937', '#111827', '#0f172a', '#1e293b', '#0b1320', '#111827'];
+
+const hashTag = (value: string) => {
+    let hash = 0;
+    for (let i = 0; i < value.length; i += 1) {
+        hash = (hash * 31 + value.charCodeAt(i)) % 997;
+    }
+    return hash;
+};
+
+const normalizeHexColor = (value: string) => {
+    const trimmed = value.trim();
+    if (/^#([0-9a-f]{3}){1,2}$/i.test(trimmed)) {
+        if (trimmed.length === 4) {
+            const r = trimmed[1];
+            const g = trimmed[2];
+            const b = trimmed[3];
+            return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
+        }
+        return trimmed.toLowerCase();
+    }
+    return '';
+};
+
+const getContrastColor = (hex: string) => {
+    const normalized = normalizeHexColor(hex);
+    if (!normalized) return '#ffffff';
+    const r = parseInt(normalized.slice(1, 3), 16);
+    const g = parseInt(normalized.slice(3, 5), 16);
+    const b = parseInt(normalized.slice(5, 7), 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.6 ? '#111827' : '#ffffff';
+};
+
+const preventMouseDown = (event: React.MouseEvent) => {
+    event.preventDefault();
+};
+
+const TagColorPicker = ({
+    color,
+    onChange,
+}: {
+    color: string;
+    onChange: (value: string) => void;
+}) => {
+    const inputRef = useRef<HTMLInputElement | null>(null);
+
+    return (
+        <>
+            <button
+                type="button"
+                className="h-4 w-4 rounded border border-white/30"
+                style={{ backgroundColor: color }}
+                onMouseDown={preventMouseDown}
+                onClick={() => inputRef.current?.click()}
+            />
+            <input
+                ref={inputRef}
+                type="color"
+                className="hidden"
+                value={normalizeHexColor(color) || '#111827'}
+                onChange={(event) => onChange(event.target.value)}
+            />
+        </>
+    );
+};
+
+function SortableTagItem({
+    tag,
+    color,
+    textColor,
+    onRemove,
+    onColorChange,
+}: {
+    tag: string;
+    color: string;
+    textColor: string;
+    onRemove: (tagToRemove: string) => void;
+    onColorChange: (tagToUpdate: string, colorValue: string) => void;
+}) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: tag });
+
+    const style: React.CSSProperties = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.7 : 1,
+    };
+
+    return (
+        <div ref={setNodeRef} style={style}>
+            <Chip
+                onClose={() => onRemove(tag)}
+                variant="flat"
+                className="flex items-center gap-2 border border-white/10"
+                style={{ backgroundColor: color, color: textColor }}
+            >
+                <span className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        className="cursor-grab text-white/70 hover:text-white"
+                        onMouseDown={preventMouseDown}
+                        {...attributes}
+                        {...listeners}
+                    >
+                        <GripVertical size={12} />
+                    </button>
+                    <span className="text-xs font-medium">{tag}</span>
+                    <TagColorPicker
+                        color={color}
+                        onChange={(value) => onColorChange(tag, value)}
+                    />
+                </span>
+            </Chip>
+        </div>
+    );
+}
+
 // Sortable Item Component
 function SortableCarouselItem({
     project,
     onEdit,
-    onDelete
+    onDelete,
+    tagColorMap,
 }: {
     project: CarouselProject;
     onEdit: (p: CarouselProject) => void;
     onDelete: (id: string) => void;
+    tagColorMap: Record<string, string>;
 }) {
     const {
         attributes,
@@ -128,9 +257,28 @@ function SortableCarouselItem({
                         {project.description}
                     </p>
                     <div className="flex flex-wrap gap-2">
-                        {project.tags?.slice(0, 3).map(tag => (
-                            <Chip key={tag} size="sm" variant="flat" className="bg-white/10 text-default-300">{tag}</Chip>
-                        ))}
+                        {project.tags?.slice(0, 3).map(tag => {
+                            const tagColor = tagColorMap[tag];
+                            const normalized = tagColor ? normalizeHexColor(tagColor) : '';
+                            const tagStyle = normalized
+                                ? {
+                                    backgroundColor: normalized,
+                                    borderColor: normalized,
+                                    color: getContrastColor(normalized),
+                                }
+                                : undefined;
+                            return (
+                                <Chip
+                                    key={tag}
+                                    size="sm"
+                                    variant="flat"
+                                    className="bg-white/10 text-default-300"
+                                    style={tagStyle}
+                                >
+                                    {tag}
+                                </Chip>
+                            );
+                        })}
                         {(project.tags?.length || 0) > 3 && (
                             <Chip size="sm" variant="flat" className="bg-white/10 text-default-300">+{project.tags!.length - 3}</Chip>
                         )}
@@ -141,7 +289,13 @@ function SortableCarouselItem({
     );
 }
 
-export default function CarouselTab() {
+type CarouselTabProps = {
+    initialProjectId?: string;
+    standalone?: boolean;
+};
+
+export default function CarouselTab({ initialProjectId, standalone = false }: CarouselTabProps) {
+    const router = useRouter();
     const [projects, setProjects] = useState<CarouselProject[]>([]);
     const [loading, setLoading] = useState(true);
     const [filterValue, setFilterValue] = useState("");
@@ -150,6 +304,8 @@ export default function CarouselTab() {
     const [uploading, setUploading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [tagInput, setTagInput] = useState("");
+    const [tagColorMap, setTagColorMap] = useState<Record<string, string>>({});
+    const [editorLoading, setEditorLoading] = useState(false);
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -163,7 +319,36 @@ export default function CarouselTab() {
     );
 
     useEffect(() => {
-        fetchProjects();
+        if (!standalone) {
+            fetchProjects();
+        }
+    }, [standalone]);
+
+    useEffect(() => {
+        const fetchTagColors = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from(TAG_COLORS_TABLE)
+                    .select('tag,color');
+
+                if (error) throw error;
+
+                const nextMap: Record<string, string> = {};
+                (data || []).forEach((row: any) => {
+                    if (typeof row?.tag !== 'string' || typeof row?.color !== 'string') return;
+                    const normalized = normalizeHexColor(row.color);
+                    if (normalized) {
+                        nextMap[row.tag] = normalized;
+                    }
+                });
+
+                setTagColorMap(nextMap);
+            } catch (error) {
+                console.error('Error fetching tag colors:', error);
+            }
+        };
+
+        fetchTagColors();
     }, []);
 
     const fetchProjects = async () => {
@@ -183,19 +368,82 @@ export default function CarouselTab() {
         }
     };
 
+    const openEditor = useCallback((project: Partial<CarouselProject>, openModal = true) => {
+        setCurrentProject(project);
+        if (openModal) {
+            onOpen();
+        }
+    }, [onOpen]);
+
+    useEffect(() => {
+        if (!standalone || !initialProjectId) return;
+
+        if (initialProjectId === 'new') {
+            openEditor({
+                title: '',
+                description: '',
+                image: '',
+                tags: [],
+            }, false);
+            return;
+        }
+
+        setEditorLoading(true);
+        const fetchProject = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('carousel_projects')
+                    .select('*')
+                    .eq('id', initialProjectId)
+                    .single();
+
+                if (error) throw error;
+                openEditor(data, false);
+            } catch (error: any) {
+                console.error('Error fetching carousel project:', error);
+                toast.error('Failed to load project.');
+            } finally {
+                setEditorLoading(false);
+            }
+        };
+
+        fetchProject();
+    }, [initialProjectId, openEditor, standalone]);
+
+    const getTagColor = useCallback((tag: string) => {
+        const stored = tagColorMap[tag];
+        const normalized = stored ? normalizeHexColor(stored) : '';
+        if (normalized) return normalized;
+        return defaultTagColors[hashTag(tag) % defaultTagColors.length];
+    }, [tagColorMap]);
+
+    const handleTagColorChange = useCallback((tag: string, color: string) => {
+        const normalized = normalizeHexColor(color);
+        if (!normalized) return;
+        setTagColorMap((prev) => ({ ...prev, [tag]: normalized }));
+        (async () => {
+            try {
+                const { error } = await supabase
+                    .from(TAG_COLORS_TABLE)
+                    .upsert(
+                        { tag, color: normalized },
+                        { onConflict: 'tag' }
+                    );
+
+                if (error) throw error;
+            } catch (err: any) {
+                console.error('Error saving tag color:', err);
+                toast.error(`Failed to save tag color: ${err.message || 'Unknown error'}`);
+            }
+        })();
+    }, []);
+
     const handleCreateNew = () => {
-        setCurrentProject({
-            title: '',
-            description: '',
-            image: '',
-            tags: [],
-        });
-        onOpen();
+        router.push('/admin/carousel/new');
     };
 
     const handleEdit = (project: CarouselProject) => {
-        setCurrentProject(project);
-        onOpen();
+        router.push(`/admin/carousel/${project.id}`);
     };
 
     const handleDelete = async (id: string) => {
@@ -212,7 +460,7 @@ export default function CarouselTab() {
         }
     };
 
-    const handleSave = async (onClose: () => void) => {
+    const handleSave = async (onClose?: () => void) => {
         setSaving(true);
         try {
             const projectData = {
@@ -231,18 +479,38 @@ export default function CarouselTab() {
                     .eq('id', currentProject.id);
                 if (error) throw error;
             } else {
-                const maxOrder = projects.length > 0
-                    ? Math.max(...projects.map(p => p.display_order || 0))
-                    : 0;
-
-                const { error } = await supabase
+                const { data: orderRows, error: orderError } = await supabase
                     .from('carousel_projects')
-                    .insert([{ ...projectData, display_order: maxOrder + 1 }]);
+                    .select('display_order')
+                    .order('display_order', { ascending: false })
+                    .limit(1);
+
+                if (orderError) throw orderError;
+                const maxOrder = orderRows?.[0]?.display_order || 0;
+
+                const { data: inserted, error } = await supabase
+                    .from('carousel_projects')
+                    .insert([{ ...projectData, display_order: maxOrder + 1 }])
+                    .select('id')
+                    .single();
                 if (error) throw error;
+
+                if (inserted?.id) {
+                    setCurrentProject((prev) => ({ ...prev, id: inserted.id }));
+                    if (standalone) {
+                        router.replace(`/admin/carousel/${inserted.id}`);
+                    }
+                }
             }
 
-            await fetchProjects();
-            onClose();
+            if (!standalone) {
+                await fetchProjects();
+            }
+
+            if (onClose) {
+                onClose();
+            }
+
             toast.success('Project saved successfully');
         } catch (error: any) {
             console.error('Error saving project:', error);
@@ -302,6 +570,23 @@ export default function CarouselTab() {
         }));
     };
 
+    const handleTagDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+
+        if (!over || active.id === over.id) return;
+
+        setCurrentProject((prev) => {
+            const tags = prev.tags || [];
+            const activeId = String(active.id);
+            const overId = String(over.id);
+            const oldIndex = tags.findIndex((tag) => tag === activeId);
+            const newIndex = tags.findIndex((tag) => tag === overId);
+
+            if (oldIndex < 0 || newIndex < 0) return prev;
+            return { ...prev, tags: arrayMove(tags, oldIndex, newIndex) };
+        });
+    };
+
     const handleDragEnd = async (event: DragEndEvent) => {
         const { active, over } = event;
 
@@ -335,9 +620,150 @@ export default function CarouselTab() {
         }
     };
 
+    const editorTitle = currentProject.id ? 'Edit Carousel Project' : 'New Carousel Project';
+
+    const editorBody = (
+        <>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                    <Textarea
+                        label="Title"
+                        placeholder="Project Name (supports multiline)"
+                        value={currentProject.title || ''}
+                        onValueChange={val => setCurrentProject({ ...currentProject, title: val })}
+                        variant="bordered"
+                        minRows={1}
+                    />
+                    <Textarea
+                        label="Description"
+                        placeholder="Project description..."
+                        value={currentProject.description || ''}
+                        onValueChange={val => setCurrentProject({ ...currentProject, description: val })}
+                        variant="bordered"
+                        minRows={5}
+                    />
+                    <div className="space-y-2">
+                        <Input
+                            label="Tags"
+                            placeholder="Press Enter to add tag"
+                            value={tagInput}
+                            onValueChange={setTagInput}
+                            onKeyDown={handleAddTag}
+                            variant="bordered"
+                        />
+                        <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={handleTagDragEnd}
+                        >
+                            <SortableContext
+                                items={currentProject.tags || []}
+                                strategy={rectSortingStrategy}
+                            >
+                                <div className="flex flex-wrap gap-2">
+                                    {(currentProject.tags || []).map((tag) => {
+                                        const tagColor = getTagColor(tag);
+                                        const tagTextColor = getContrastColor(tagColor);
+                                        return (
+                                            <SortableTagItem
+                                                key={tag}
+                                                tag={tag}
+                                                color={tagColor}
+                                                textColor={tagTextColor}
+                                                onRemove={removeTag}
+                                                onColorChange={handleTagColorChange}
+                                            />
+                                        );
+                                    })}
+                                </div>
+                            </SortableContext>
+                        </DndContext>
+                    </div>
+                    <div className="flex gap-4">
+                        <Input
+                            label="Demo Link"
+                            placeholder="https://..."
+                            startContent={<ExternalLink size={16} />}
+                            value={currentProject.demo_url || ''}
+                            onValueChange={val => setCurrentProject({ ...currentProject, demo_url: val })}
+                            variant="bordered"
+                        />
+                        <Input
+                            label="GitHub Link"
+                            placeholder="https://..."
+                            startContent={<Github size={16} />}
+                            value={currentProject.github_url || ''}
+                            onValueChange={val => setCurrentProject({ ...currentProject, github_url: val })}
+                            variant="bordered"
+                        />
+                    </div>
+                </div>
+
+                <div className="space-y-4">
+                    <div className="border-2 border-dashed border-default-300 rounded-xl p-4 text-center hover:border-primary transition-colors cursor-pointer relative h-64 flex items-center justify-center">
+                        <input
+                            type="file"
+                            accept="image/*"
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            onChange={handleImageUpload}
+                            disabled={uploading}
+                        />
+                        {currentProject.image ? (
+                            <div className="relative w-full h-full">
+                                <Image
+                                    src={currentProject.image}
+                                    alt="Preview"
+                                    fill
+                                    className="object-contain rounded-lg"
+                                />
+                                <div className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
+                                    <p className="text-white font-medium">Click to change image</p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="py-8">
+                                <ImageIcon size={48} className="mx-auto mb-2 text-default-400" />
+                                <p className="text-default-500">Click or drag cover image here</p>
+                                {uploading && <p className="text-primary text-sm mt-2">Uploading...</p>}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </>
+    );
+
     const filteredProjects = projects.filter(project =>
         project.title.toLowerCase().includes(filterValue.toLowerCase())
     );
+
+    if (standalone) {
+        return (
+            <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h2 className="text-xl font-semibold">{editorTitle}</h2>
+                        <p className="text-sm text-default-500">Edit carousel project details.</p>
+                    </div>
+                    <Button variant="flat" onPress={() => router.push('/admin/carousel')}>
+                        Back
+                    </Button>
+                </div>
+
+                {editorLoading ? (
+                    <div className="text-default-500">Loading project...</div>
+                ) : (
+                    <div className="space-y-6">{editorBody}</div>
+                )}
+
+                <div className="flex justify-end">
+                    <Button color="primary" onPress={() => handleSave()} isLoading={saving}>
+                        Save Project
+                    </Button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
@@ -364,6 +790,7 @@ export default function CarouselTab() {
                             project={project}
                             onEdit={handleEdit}
                             onDelete={handleDelete}
+                            tagColorMap={tagColorMap}
                         />
                     ))}
                 </div>
@@ -384,6 +811,7 @@ export default function CarouselTab() {
                                     project={project}
                                     onEdit={handleEdit}
                                     onDelete={handleDelete}
+                                    tagColorMap={tagColorMap}
                                 />
                             ))}
                         </div>
@@ -402,95 +830,10 @@ export default function CarouselTab() {
                     {(onClose) => (
                         <>
                             <ModalHeader className="flex flex-col gap-1">
-                                {currentProject.id ? 'Edit Carousel Project' : 'New Carousel Project'}
+                                {editorTitle}
                             </ModalHeader>
                             <ModalBody>
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                    <div className="space-y-4">
-                                        <Textarea
-                                            label="Title"
-                                            placeholder="Project Name (supports multiline)"
-                                            value={currentProject.title || ''}
-                                            onValueChange={val => setCurrentProject({ ...currentProject, title: val })}
-                                            variant="bordered"
-                                            minRows={1}
-                                        />
-                                        <Textarea
-                                            label="Description"
-                                            placeholder="Project description..."
-                                            value={currentProject.description || ''}
-                                            onValueChange={val => setCurrentProject({ ...currentProject, description: val })}
-                                            variant="bordered"
-                                            minRows={5}
-                                        />
-                                        <div className="space-y-2">
-                                            <Input
-                                                label="Tags"
-                                                placeholder="Press Enter to add tag"
-                                                value={tagInput}
-                                                onValueChange={setTagInput}
-                                                onKeyDown={handleAddTag}
-                                                variant="bordered"
-                                            />
-                                            <div className="flex flex-wrap gap-2">
-                                                {currentProject.tags?.map(tag => (
-                                                    <Chip key={tag} onClose={() => removeTag(tag)} variant="flat">
-                                                        {tag}
-                                                    </Chip>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <div className="flex gap-4">
-                                            <Input
-                                                label="Demo Link"
-                                                placeholder="https://..."
-                                                startContent={<ExternalLink size={16} />}
-                                                value={currentProject.demo_url || ''}
-                                                onValueChange={val => setCurrentProject({ ...currentProject, demo_url: val })}
-                                                variant="bordered"
-                                            />
-                                            <Input
-                                                label="GitHub Link"
-                                                placeholder="https://..."
-                                                startContent={<Github size={16} />}
-                                                value={currentProject.github_url || ''}
-                                                onValueChange={val => setCurrentProject({ ...currentProject, github_url: val })}
-                                                variant="bordered"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        <div className="border-2 border-dashed border-default-300 rounded-xl p-4 text-center hover:border-primary transition-colors cursor-pointer relative h-64 flex items-center justify-center">
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                                onChange={handleImageUpload}
-                                                disabled={uploading}
-                                            />
-                                            {currentProject.image ? (
-                                                <div className="relative w-full h-full">
-                                                    <Image
-                                                        src={currentProject.image}
-                                                        alt="Preview"
-                                                        fill
-                                                        className="object-contain rounded-lg"
-                                                    />
-                                                    <div className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
-                                                        <p className="text-white font-medium">Click to change image</p>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <div className="py-8">
-                                                    <ImageIcon size={48} className="mx-auto mb-2 text-default-400" />
-                                                    <p className="text-default-500">Click or drag cover image here</p>
-                                                    {uploading && <p className="text-primary text-sm mt-2">Uploading...</p>}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
+                                {editorBody}
                             </ModalBody>
                             <ModalFooter>
                                 <Button color="danger" variant="flat" onPress={onClose}>
