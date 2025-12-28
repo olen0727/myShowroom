@@ -785,6 +785,12 @@ export default function ProjectsTab({ initialProjectId, standalone = false }: Pr
     const [editorLoading, setEditorLoading] = useState(false);
     const contentImageInputRef = useRef<HTMLInputElement | null>(null);
     const dragPathRef = useRef<Path | null>(null);
+    const toolbarRef = useRef<HTMLDivElement | null>(null);
+    const toolbarAnchorRef = useRef<HTMLDivElement | null>(null);
+    const toolbarPlaceholderRef = useRef<HTMLDivElement | null>(null);
+    const [toolbarPinned, setToolbarPinned] = useState(false);
+    const [toolbarStyle, setToolbarStyle] = useState<React.CSSProperties>({});
+    const [toolbarHeight, setToolbarHeight] = useState(0);
     const [slashState, setSlashState] = useState<SlashState>({
         open: false,
         range: null,
@@ -1460,7 +1466,7 @@ export default function ProjectsTab({ initialProjectId, standalone = false }: Pr
                 content: '',
                 images: [],
                 tags: [],
-                category: '?Нчлп',
+                category: '前端',
             }, false);
             return;
         }
@@ -1486,6 +1492,66 @@ export default function ProjectsTab({ initialProjectId, standalone = false }: Pr
 
         fetchProject();
     }, [initialProjectId, openEditor, standalone]);
+
+    useEffect(() => {
+        const anchor = toolbarAnchorRef.current;
+        const toolbar = toolbarRef.current;
+        if (!anchor || !toolbar) return;
+
+        const getScrollParent = (node: HTMLElement | null) => {
+            let parent = node?.parentElement;
+            while (parent) {
+                const style = window.getComputedStyle(parent);
+                if (/(auto|scroll)/.test(style.overflowY)) {
+                    return parent;
+                }
+                parent = parent.parentElement;
+            }
+            return window;
+        };
+
+        const scrollParent = getScrollParent(anchor);
+
+        const update = () => {
+            const rect = anchor.getBoundingClientRect();
+            const shouldPin = rect.top <= 0;
+            setToolbarPinned(shouldPin);
+
+            if (shouldPin) {
+                const container = anchor.parentElement;
+                if (container) {
+                    const containerRect = container.getBoundingClientRect();
+                    setToolbarStyle({
+                        width: `${containerRect.width}px`,
+                        left: `${containerRect.left}px`,
+                    });
+                }
+                setToolbarHeight(toolbar.getBoundingClientRect().height);
+            } else {
+                setToolbarStyle({});
+                setToolbarHeight(0);
+            }
+        };
+
+        update();
+
+        const target = scrollParent === window ? window : scrollParent;
+        target.addEventListener('scroll', update, { passive: true });
+        window.addEventListener('resize', update);
+
+        let resizeObserver: ResizeObserver | null = null;
+        if (typeof ResizeObserver !== 'undefined') {
+            resizeObserver = new ResizeObserver(update);
+            resizeObserver.observe(anchor);
+            resizeObserver.observe(toolbar);
+        }
+
+        return () => {
+            target.removeEventListener('scroll', update);
+            window.removeEventListener('resize', update);
+            resizeObserver?.disconnect();
+        };
+    }, [editorKey, editorLoading, isOpen, standalone]);
 
     const handleCreateNew = () => {
         router.push('/admin/projects/new');
@@ -1678,6 +1744,9 @@ export default function ProjectsTab({ initialProjectId, standalone = false }: Pr
     };
 
     const editorTitle = currentProject.id ? 'Edit Project' : 'New Project';
+    const toolbarClassName = `flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-black/80 px-3 py-2 backdrop-blur ${
+        toolbarPinned ? 'fixed top-0 z-50 shadow-lg' : 'relative'
+    }`;
 
     const editorBody = (
         <>
@@ -1698,7 +1767,7 @@ export default function ProjectsTab({ initialProjectId, standalone = false }: Pr
                         onChange={(e) => setCurrentProject({ ...currentProject, category: e.target.value })}
                         variant="bordered"
                     >
-                        <SelectItem key="?Нчлп" value="?Нчлп">?Нчлп</SelectItem>
+                        <SelectItem key="前端" value="前端">前端</SelectItem>
                         <SelectItem key="UX" value="UX">UX</SelectItem>
                     </Select>
                     <Textarea
@@ -1819,7 +1888,9 @@ export default function ProjectsTab({ initialProjectId, standalone = false }: Pr
                         <span className="text-primary text-sm">Uploading image...</span>
                     )}
                 </div>
-                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                <div ref={toolbarAnchorRef} className="h-0" />
+                <div ref={toolbarPlaceholderRef} style={{ height: toolbarPinned ? toolbarHeight : 0 }} />
+                <div ref={toolbarRef} className={toolbarClassName} style={toolbarPinned ? toolbarStyle : undefined}>
                     <Tooltip content="Text">
                         <Button isIconOnly size="sm" variant="flat" onPress={() => setBlockType(NODES.p)} onMouseDown={preventMouseDown}>
                             <Type size={16} />
