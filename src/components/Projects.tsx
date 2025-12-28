@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { ExternalLink, Github } from 'lucide-react';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import styles from './Projects.module.css';
 import ProjectCarousel from './ProjectCarousel';
@@ -249,11 +250,14 @@ export default function Projects() {
                             </h3>
                             <p className={styles.projectDesc} style={{ whiteSpace: 'pre-wrap' }}>{project.description}</p>
                             <div className={styles.tags}>
-                                {project.tags.map((tag: string) => (
+                                {project.tags?.map((tag: string) => (
                                     <span key={tag} className={styles.tag}>{tag}</span>
                                 ))}
                             </div>
                             <div className={styles.links}>
+                                <Link href={`/projects/${project.id}`} className={styles.detailBtn}>
+                                    Details
+                                </Link>
                                 {project.demo_url && (
                                     <a href={project.demo_url} className={styles.linkBtn} target="_blank" rel="noopener noreferrer">
                                         線上預覽 <ExternalLink size={18} />

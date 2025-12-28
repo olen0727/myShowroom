@@ -1,0 +1,240 @@
+.page {
+    position: relative;
+    min-height: 100vh;
+    background: #050505;
+    color: #fff;
+    padding: 6rem 1.5rem 6rem;
+    overflow: hidden;
+}
+
+.background {
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at top left, rgba(59, 130, 246, 0.15), transparent 45%),
+        radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.12), transparent 40%),
+        linear-gradient(180deg, rgba(15, 23, 42, 0.7) 0%, rgba(0, 0, 0, 0.9) 100%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.background::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+        repeating-linear-gradient(90deg, rgba(148, 163, 184, 0.08) 0, rgba(148, 163, 184, 0.08) 1px, transparent 1px, transparent 60px),
+        repeating-linear-gradient(0deg, rgba(148, 163, 184, 0.05) 0, rgba(148, 163, 184, 0.05) 1px, transparent 1px, transparent 60px);
+    opacity: 0.2;
+}
+
+.container {
+    position: relative;
+    z-index: 1;
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+.backButton {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #e2e8f0;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.backButton:hover {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.4);
+    transform: translateY(-1px);
+}
+
+.status {
+    margin-top: 4rem;
+    color: #94a3b8;
+    font-size: 1.1rem;
+}
+
+.contentWrapper {
+    margin-top: 3.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
+}
+
+.header {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.kicker {
+    text-transform: uppercase;
+    letter-spacing: 0.4em;
+    font-size: 0.75rem;
+    color: rgba(148, 163, 184, 0.8);
+}
+
+.title {
+    font-size: clamp(2.5rem, 4vw, 3.75rem);
+    font-weight: 800;
+    line-height: 1.1;
+    background: linear-gradient(90deg, #ffffff 0%, #94a3b8 60%, #60a5fa 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.description {
+    font-size: 1.15rem;
+    line-height: 1.8;
+    color: #cbd5f5;
+}
+
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.sectionTitle {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #e2e8f0;
+}
+
+.tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.tag {
+    font-size: 0.9rem;
+    color: #fff;
+    background: rgba(59, 130, 246, 0.15);
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.contentShell {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 24px;
+    padding: 2rem;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+}
+
+.contentEditable {
+    min-height: 200px;
+    outline: none;
+    white-space: pre-wrap;
+}
+
+.contentBlock {
+    margin: 1.5rem 0;
+}
+
+.imageFrame {
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(15, 23, 42, 0.6);
+    padding: 0.75rem;
+}
+
+.contentImage {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 12px;
+}
+
+.codeBlock {
+    margin: 1.5rem 0;
+    padding: 1.25rem 1.5rem;
+    border-radius: 16px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    background: rgba(15, 23, 42, 0.85);
+    color: #e2e8f0;
+    font-size: 0.85rem;
+    overflow-x: auto;
+}
+
+.callout {
+    margin: 1.5rem 0;
+    padding: 1rem 1.5rem;
+    border-radius: 16px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    background: rgba(30, 41, 59, 0.6);
+    color: #e2e8f0;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.5rem 0;
+    font-size: 0.95rem;
+}
+
+.tableRow {
+    border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.tableCell,
+.tableHeaderCell {
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    padding: 0.75rem 1rem;
+    text-align: left;
+    vertical-align: top;
+}
+
+.tableHeaderCell {
+    background: rgba(148, 163, 184, 0.12);
+    font-weight: 600;
+}
+
+.mutedText {
+    color: #94a3b8;
+    font-size: 0.95rem;
+}
+
+.contentShell :global(a) {
+    color: #60a5fa;
+    text-decoration: underline;
+}
+
+.contentShell :global(ul),
+.contentShell :global(ol) {
+    padding-left: 1.5rem;
+    margin: 1rem 0;
+}
+
+.contentShell :global(li) {
+    margin: 0.4rem 0;
+}
+
+.contentShell :global(code) {
+    font-family: 'SFMono-Regular', ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+}
+
+@media (max-width: 768px) {
+    .page {
+        padding: 5rem 1.25rem 5rem;
+    }
+
+    .contentShell {
+        padding: 1.5rem;
+    }
+
+    .backButton {
+        width: 100%;
+        justify-content: center;
+    }
+}
