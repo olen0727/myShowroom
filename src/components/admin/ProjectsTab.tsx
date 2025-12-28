@@ -61,8 +61,6 @@ import {
     PlateContent,
     createPlatePlugin,
     toPlatePlugin,
-    useEditorId,
-    useFocused,
     usePlateEditor,
     type PlateEditor,
 } from 'platejs/react';
@@ -75,7 +73,7 @@ import { indent, outdent } from '@platejs/indent';
 import { IndentPlugin } from '@platejs/indent/react';
 import { ImagePlugin } from '@platejs/media/react';
 import { AutoformatPlugin } from '@platejs/autoformat';
-import { getRangeBoundingClientRect, useFloatingToolbar, useFloatingToolbarState } from '@platejs/floating';
+import { getRangeBoundingClientRect } from '@platejs/floating';
 import {
     DndContext,
     closestCenter,
@@ -536,103 +534,6 @@ type SlashCommandItem = {
 const preventMouseDown = (event: React.MouseEvent) => {
     event.preventDefault();
 };
-
-function ContentFloatingToolbar({
-    onToggleMark,
-    onSetMarkValue,
-    onCustomColor,
-    onCustomHighlight,
-    textColors,
-    highlightColors,
-}: {
-    onToggleMark: (key: string) => void;
-    onSetMarkValue: (key: 'color' | 'backgroundColor', value?: string) => void;
-    onCustomColor: () => void;
-    onCustomHighlight: () => void;
-    textColors: string[];
-    highlightColors: string[];
-}) {
-    const editorId = useEditorId();
-    const focusedEditorId = useFocused();
-    const floatingState = useFloatingToolbarState({ editorId, focusedEditorId });
-    const { ref, props, hidden } = useFloatingToolbar(floatingState);
-
-    if (hidden) return null;
-
-    return (
-        <div
-            ref={ref}
-            style={props.style}
-            onMouseDown={(event) => event.preventDefault()}
-            className="z-50 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-black/80 px-3 py-2 text-xs text-white shadow-lg backdrop-blur"
-        >
-            <Button size="sm" variant="flat" onPress={() => onToggleMark('bold')} onMouseDown={(event) => event.preventDefault()}>
-                Bold
-            </Button>
-            <Button size="sm" variant="flat" onPress={() => onToggleMark('italic')} onMouseDown={(event) => event.preventDefault()}>
-                Italic
-            </Button>
-            <Button size="sm" variant="flat" onPress={() => onToggleMark('underline')} onMouseDown={(event) => event.preventDefault()}>
-                Underline
-            </Button>
-            <Button size="sm" variant="flat" onPress={() => onToggleMark('strikethrough')} onMouseDown={(event) => event.preventDefault()}>
-                Strike
-            </Button>
-            <Button size="sm" variant="flat" onPress={() => onToggleMark('code')} onMouseDown={(event) => event.preventDefault()}>
-                Code
-            </Button>
-            <div className="h-5 w-px bg-white/10" />
-            <div className="flex items-center gap-2">
-                <span className="text-[11px] text-default-300">Text</span>
-                {textColors.map((color) => (
-                    <button
-                        key={color}
-                        type="button"
-                        className="h-5 w-5 rounded border border-white/20"
-                        style={{ backgroundColor: color }}
-                        onMouseDown={(event) => {
-                            event.preventDefault();
-                            onSetMarkValue('color', color);
-                        }}
-                    />
-                ))}
-                <Button size="sm" variant="flat" onPress={() => onSetMarkValue('color')} onMouseDown={(event) => event.preventDefault()}>
-                    Clear
-                </Button>
-                <Button size="sm" variant="flat" onPress={onCustomColor} onMouseDown={(event) => event.preventDefault()}>
-                    Custom
-                </Button>
-            </div>
-            <div className="h-5 w-px bg-white/10" />
-            <div className="flex items-center gap-2">
-                <span className="text-[11px] text-default-300">Highlight</span>
-                {highlightColors.map((color) => (
-                    <button
-                        key={color}
-                        type="button"
-                        className="h-5 w-5 rounded border border-white/20"
-                        style={{ backgroundColor: color }}
-                        onMouseDown={(event) => {
-                            event.preventDefault();
-                            onSetMarkValue('backgroundColor', color);
-                        }}
-                    />
-                ))}
-                <Button
-                    size="sm"
-                    variant="flat"
-                    onPress={() => onSetMarkValue('backgroundColor')}
-                    onMouseDown={(event) => event.preventDefault()}
-                >
-                    Clear
-                </Button>
-                <Button size="sm" variant="flat" onPress={onCustomHighlight} onMouseDown={(event) => event.preventDefault()}>
-                    Custom
-                </Button>
-            </div>
-        </div>
-    );
-}
 
 // Sortable Item Component
 function SortableProjectItem({
@@ -1852,14 +1753,6 @@ export default function ProjectsTab() {
                                                 placeholder="Write here. Type / for blocks or paste images to upload."
                                                 spellCheck
                                                 onKeyDown={handleEditorKeyDown}
-                                            />
-                                            <ContentFloatingToolbar
-                                                onToggleMark={toggleMark}
-                                                onSetMarkValue={setMarkValue}
-                                                onCustomColor={handleCustomColor}
-                                                onCustomHighlight={handleCustomHighlight}
-                                                textColors={textColors}
-                                                highlightColors={highlightColors}
                                             />
                                             {slashState.open && slashRect && (
                                                 <div
