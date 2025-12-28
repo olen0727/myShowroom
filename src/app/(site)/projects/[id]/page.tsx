@@ -25,9 +25,25 @@ interface Project {
     content?: Value | string | null;
 }
 
+const TAG_COLORS_TABLE = 'project_tag_colors';
+
 const EMPTY_PLATE_VALUE: Value = [
     { type: 'p', children: [{ text: '' }] },
 ];
+
+const normalizeHexColor = (value: string) => {
+    const trimmed = value.trim();
+    if (/^#([0-9a-f]{3}){1,2}$/i.test(trimmed)) {
+        if (trimmed.length === 4) {
+            const r = trimmed[1];
+            const g = trimmed[2];
+            const b = trimmed[3];
+            return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
+        }
+        return trimmed.toLowerCase();
+    }
+    return '';
+};
 
 const parsePlateValue = (raw: unknown): Value => {
     if (Array.isArray(raw)) {
@@ -222,6 +238,7 @@ export default function ProjectDetailPage() {
     const [error, setError] = useState<string | null>(null);
     const [contentValue, setContentValue] = useState<Value>(EMPTY_PLATE_VALUE);
     const [editorKey, setEditorKey] = useState(0);
+    const [tagColorMap, setTagColorMap] = useState<Record<string, string>>({});
 
     const plugins = useMemo(() => ([
         StyledBlocksPlugin,
@@ -275,6 +292,33 @@ export default function ProjectDetailPage() {
         fetchProject();
     }, [projectId]);
 
+    useEffect(() => {
+        const fetchTagColors = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from(TAG_COLORS_TABLE)
+                    .select('tag,color');
+
+                if (error) throw error;
+
+                const nextMap: Record<string, string> = {};
+                (data || []).forEach((row: any) => {
+                    if (typeof row?.tag !== 'string' || typeof row?.color !== 'string') return;
+                    const normalized = normalizeHexColor(row.color);
+                    if (normalized) {
+                        nextMap[row.tag] = normalized;
+                    }
+                });
+
+                setTagColorMap(nextMap);
+            } catch (error) {
+                console.error('Error fetching tag colors:', error);
+            }
+        };
+
+        fetchTagColors();
+    }, []);
+
     const handleBack = () => {
         if (typeof window !== 'undefined' && window.history.length > 1) {
             router.back();
@@ -315,9 +359,21 @@ export default function ProjectDetailPage() {
                                 {(project.tags || []).length === 0 ? (
                                     <span className={styles.mutedText}>No tags</span>
                                 ) : (
-                                    project.tags.map((tag) => (
-                                        <span key={tag} className={styles.tag}>{tag}</span>
-                                    ))
+                                    project.tags.map((tag) => {
+                                        const tagColor = tagColorMap[tag];
+                                        const normalized = tagColor ? normalizeHexColor(tagColor) : '';
+                                        const tagStyle = normalized
+                                            ? {
+                                                backgroundColor: normalized,
+                                                borderColor: normalized,
+                                            }
+                                            : undefined;
+                                        return (
+                                            <span key={tag} className={styles.tag} style={tagStyle}>
+                                                {tag}
+                                            </span>
+                                        );
+                                    })
                                 )}
                             </div>
                         </section>

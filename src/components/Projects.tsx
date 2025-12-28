@@ -9,6 +9,22 @@ import { supabase } from '@/lib/supabase';
 import styles from './Projects.module.css';
 import ProjectCarousel from './ProjectCarousel';
 
+const TAG_COLORS_TABLE = 'project_tag_colors';
+
+const normalizeHexColor = (value: string) => {
+    const trimmed = value.trim();
+    if (/^#([0-9a-f]{3}){1,2}$/i.test(trimmed)) {
+        if (trimmed.length === 4) {
+            const r = trimmed[1];
+            const g = trimmed[2];
+            const b = trimmed[3];
+            return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
+        }
+        return trimmed.toLowerCase();
+    }
+    return '';
+};
+
 // Image Slider Component
 function ImageSlider({ images, title }: { images: string[], title: string }) {
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -72,6 +88,7 @@ export default function Projects() {
     const [loading, setLoading] = useState(true);
     const [activeProjectId, setActiveProjectId] = useState<number | null>(null);
     const [showSidebar, setShowSidebar] = useState(false);
+    const [tagColorMap, setTagColorMap] = useState<Record<string, string>>({});
     const projectRefs = useRef<(HTMLDivElement | null)[]>([]);
     const sectionRef = useRef<HTMLElement>(null);
     const [sidebarWidth, setSidebarWidth] = useState(300);
@@ -94,6 +111,33 @@ export default function Projects() {
             }
         };
         fetchProjects();
+    }, []);
+
+    useEffect(() => {
+        const fetchTagColors = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from(TAG_COLORS_TABLE)
+                    .select('tag,color');
+
+                if (error) throw error;
+
+                const nextMap: Record<string, string> = {};
+                (data || []).forEach((row: any) => {
+                    if (typeof row?.tag !== 'string' || typeof row?.color !== 'string') return;
+                    const normalized = normalizeHexColor(row.color);
+                    if (normalized) {
+                        nextMap[row.tag] = normalized;
+                    }
+                });
+
+                setTagColorMap(nextMap);
+            } catch (error) {
+                console.error('Error fetching tag colors:', error);
+            }
+        };
+
+        fetchTagColors();
     }, []);
 
     // 計算側邊欄項目的最大寬度
@@ -250,9 +294,21 @@ export default function Projects() {
                             </h3>
                             <p className={styles.projectDesc} style={{ whiteSpace: 'pre-wrap' }}>{project.description}</p>
                             <div className={styles.tags}>
-                                {project.tags?.map((tag: string) => (
-                                    <span key={tag} className={styles.tag}>{tag}</span>
-                                ))}
+                                {project.tags?.map((tag: string) => {
+                                    const tagColor = tagColorMap[tag];
+                                    const normalized = tagColor ? normalizeHexColor(tagColor) : '';
+                                    const tagStyle = normalized
+                                        ? {
+                                            backgroundColor: normalized,
+                                            borderColor: normalized,
+                                        }
+                                        : undefined;
+                                    return (
+                                        <span key={tag} className={styles.tag} style={tagStyle}>
+                                            {tag}
+                                        </span>
+                                    );
+                                })}
                             </div>
                             <div className={styles.links}>
                                 <Link href={`/projects/${project.id}`} className={styles.detailBtn}>

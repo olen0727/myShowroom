@@ -536,7 +536,7 @@ const preventMouseDown = (event: React.MouseEvent) => {
 };
 
 const defaultTagColors = ['#1f2937', '#111827', '#0f172a', '#1e293b', '#0b1320', '#111827'];
-const TAG_COLOR_STORAGE_KEY = 'project-tag-color-map';
+const TAG_COLORS_TABLE = 'project_tag_colors';
 
 const hashTag = (value: string) => {
     let hash = 0;
@@ -786,34 +786,31 @@ export default function ProjectsTab() {
     }, []);
 
     useEffect(() => {
-        try {
-            const stored = localStorage.getItem(TAG_COLOR_STORAGE_KEY);
-            if (!stored) return;
-            const parsed = JSON.parse(stored);
-            if (!parsed || typeof parsed !== 'object') return;
+        const fetchTagColors = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from(TAG_COLORS_TABLE)
+                    .select('tag,color');
 
-            const nextMap: Record<string, string> = {};
-            Object.entries(parsed as Record<string, unknown>).forEach(([key, value]) => {
-                if (typeof key !== 'string' || typeof value !== 'string') return;
-                const normalized = normalizeHexColor(value);
-                if (normalized) {
-                    nextMap[key] = normalized;
-                }
-            });
+                if (error) throw error;
 
-            setTagColorMap(nextMap);
-        } catch {
-            // Ignore malformed localStorage data.
-        }
+                const nextMap: Record<string, string> = {};
+                (data || []).forEach((row: any) => {
+                    if (typeof row?.tag !== 'string' || typeof row?.color !== 'string') return;
+                    const normalized = normalizeHexColor(row.color);
+                    if (normalized) {
+                        nextMap[row.tag] = normalized;
+                    }
+                });
+
+                setTagColorMap(nextMap);
+            } catch (error) {
+                console.error('Error fetching tag colors:', error);
+            }
+        };
+
+        fetchTagColors();
     }, []);
-
-    useEffect(() => {
-        try {
-            localStorage.setItem(TAG_COLOR_STORAGE_KEY, JSON.stringify(tagColorMap));
-        } catch {
-            // Ignore storage write failures.
-        }
-    }, [tagColorMap]);
 
     const handleContentImageUpload = useCallback(async (dataUrl: ArrayBuffer | string) => {
         setContentUploading(true);
@@ -1034,6 +1031,21 @@ export default function ProjectsTab() {
         const normalized = normalizeHexColor(color);
         if (!normalized) return;
         setTagColorMap((prev) => ({ ...prev, [tag]: normalized }));
+        (async () => {
+            try {
+                const { error } = await supabase
+                    .from(TAG_COLORS_TABLE)
+                    .upsert(
+                        { tag, color: normalized },
+                        { onConflict: 'tag' }
+                    );
+
+                if (error) throw error;
+            } catch (err: any) {
+                console.error('Error saving tag color:', err);
+                toast.error(`Failed to save tag color: ${err.message || 'Unknown error'}`);
+            }
+        })();
     }, []);
 
     const handleIndentAction = useCallback((reverse = false) => {
