@@ -11,7 +11,11 @@ import {
     SelectItem,
     Tooltip,
     Chip,
+    Popover,
+    PopoverTrigger,
+    PopoverContent,
 } from "@nextui-org/react";
+import { ColorPicker } from '@/components/admin/shared/ColorPicker';
 import {
     ExternalLink,
     Github,
@@ -42,7 +46,7 @@ import {
 import { toast } from 'sonner';
 import Image from 'next/image';
 import { RangeApi, STYLE_KEYS, NODES, type Value } from 'platejs';
-import { Editor, Path } from 'slate';
+import { Editor, Path, Transforms } from 'slate';
 import type { Range } from 'platejs';
 import {
     Plate,
@@ -85,7 +89,8 @@ import {
     dataUrlToBlob,
     hashTag,
     getContrastColor,
-    preventMouseDown
+    preventMouseDown,
+    parseMarkdownTable
 } from '@/lib/utils';
 import { TAG_COLORS_TABLE, DEFAULT_TAG_COLORS } from '@/lib/constants';
 import { BlockDragWrapper } from '@/components/editor/BlockDragWrapper';
@@ -110,6 +115,24 @@ const TablePlugin = createPlatePlugin({ key: NODES.table, node: { isElement: tru
 const TableRowPlugin = createPlatePlugin({ key: NODES.tr, node: { isElement: true }, render: { node: TableRowElement } });
 const TableCellPlugin = createPlatePlugin({ key: NODES.td, node: { isElement: true }, render: { node: TableCellElement } });
 const TableHeaderCellPlugin = createPlatePlugin({ key: NODES.th, node: { isElement: true }, render: { node: TableHeaderCellElement } });
+const FontColorPlugin = createPlatePlugin({ key: STYLE_KEYS.color, node: { isLeaf: true } });
+const FontBackgroundColorPlugin = createPlatePlugin({ key: STYLE_KEYS.backgroundColor, node: { isLeaf: true } });
+
+const renderLeaf = ({ attributes, children, leaf }: {
+    attributes: React.HTMLAttributes<HTMLSpanElement>;
+    children: React.ReactNode;
+    leaf: { [key: string]: unknown; color?: string; backgroundColor?: string };
+}) => {
+    const style: React.CSSProperties = { ...(attributes.style || {}) };
+
+    const textColor = leaf[STYLE_KEYS.color] as string | undefined;
+    const highlightColor = leaf[STYLE_KEYS.backgroundColor] as string | undefined;
+
+    if (textColor) style.color = textColor;
+    if (highlightColor) style.backgroundColor = highlightColor;
+
+    return <span {...attributes} style={style}>{children}</span>;
+};
 
 const StyledBlocksPlugin = BasicBlocksPlugin
     .extendPlugin({ key: NODES.h1 }, { node: { props: { className: 'text-2xl font-semibold text-white' } } })
@@ -158,6 +181,7 @@ export default function ProjectEditor({ initialProject, onSave, onCancel, standa
     const [saving, setSaving] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [contentUploading, setContentUploading] = useState(false);
+    const [customColors, setCustomColors] = useState<string[]>([]);
 
     // Slash command state (kept minimal for now)
     const [slashState, setSlashState] = useState<SlashState>({ open: false, range: null, query: '' });
@@ -230,7 +254,7 @@ export default function ProjectEditor({ initialProject, onSave, onCancel, standa
         { mode: 'block', match: '``` ', type: NODES.codeBlock },
         { mode: 'block', match: ['- ', '* '], format: (editor: PlateEditor) => toggleList(editor, { listStyleType: ListStyleType.Disc }) },
         { mode: 'block', match: ['1. ', '1) '], format: (editor: PlateEditor) => toggleList(editor, { listStyleType: ListStyleType.Decimal }) },
-        { mode: 'block', match: '---', trigger: ' ', format: (editor: PlateEditor) => (editor as any).tf.insertNodes({ type: NODES.hr, children: [{ text: '' }] }) },
+        { mode: 'block', match: '---', trigger: ' ', format: (editor: PlateEditor) => Transforms.insertNodes(editor as any, { type: NODES.hr, children: [{ text: '' }] } as any) },
     ]), []);
 
     const blockDragPlugin = useMemo(() => createPlatePlugin({
@@ -246,9 +270,23 @@ export default function ProjectEditor({ initialProject, onSave, onCancel, standa
             onPaste: ({ editor, event }) => {
                 const clipboard = event.clipboardData;
                 if (!clipboard) return;
-                const html = clipboard.getData('text/html');
-                // Basic check logic
-                return;
+                const text = clipboard.getData('text/plain');
+                if (!text) return;
+
+                const tableRows = parseMarkdownTable(text);
+                if (tableRows) {
+                    event.preventDefault();
+                    Transforms.insertNodes(editor as any, {
+                        type: NODES.table,
+                        children: tableRows.map(row => ({
+                            type: NODES.tr,
+                            children: row.children.map(cell => ({
+                                type: NODES.td,
+                                children: cell
+                            }))
+                        }))
+                    } as any);
+                }
             },
         },
     }), []);
@@ -257,6 +295,7 @@ export default function ProjectEditor({ initialProject, onSave, onCancel, standa
         StyledBlocksPlugin, BasicMarksPlugin, CalloutPlugin, CodeBlockPlugin, HrPlugin,
         TablePlugin, TableRowPlugin, TableCellPlugin, TableHeaderCellPlugin,
         ListPlugin, IndentPlugin, LinkPlugin,
+        FontColorPlugin, FontBackgroundColorPlugin,
         ImagePlugin.configure({ options: { uploadImage: handleContentImageUpload } }).withComponent(ImageElement),
         blockDragPlugin,
         tablePastePlugin,
@@ -279,11 +318,11 @@ export default function ProjectEditor({ initialProject, onSave, onCancel, standa
             const uploadedUrl = await handleContentImageUpload(dataUrl);
 
             if (uploadedUrl) {
-                (editor as any).tf.insertNodes({
+                Transforms.insertNodes(editor as any, {
                     type: NODES.img,
                     url: uploadedUrl,
                     children: [{ text: '' }],
-                });
+                } as any);
             }
         } catch (error: any) {
             console.error('Error inserting content image:', error);
@@ -406,9 +445,26 @@ export default function ProjectEditor({ initialProject, onSave, onCancel, standa
     };
 
     // --- Toolbar Actions ---
-    const setBlockType = (type: string) => (editor as any).tf.toggle.block({ type });
-    const toggleMark = (type: string) => (editor as any).tf.toggle.mark({ type });
-    const insertDivider = () => (editor as any).tf.insertNodes({ type: NODES.hr, children: [{ text: '' }] });
+    // --- Actions ---
+    const setBlockType = (type: string) => {
+        if (!editor) return;
+        Transforms.setNodes(editor as any, { type } as any);
+    };
+
+    const toggleMark = (type: string) => {
+        if (!editor) return;
+        const marks = Editor.marks(editor as any) as Record<string, any> | null;
+        if (marks?.[type]) {
+            (editor as any).removeMark(type);
+        } else {
+            (editor as any).addMark(type, true);
+        }
+    };
+
+    const insertDivider = () => {
+        if (!editor) return;
+        Transforms.insertNodes(editor as any, { type: NODES.hr, children: [{ text: '' }] } as any);
+    };
     const openContentImagePicker = () => contentImageInputRef.current?.click();
     const handleInsertLink = () => {
         const url = window.prompt('Enter link URL:');
@@ -528,23 +584,91 @@ export default function ProjectEditor({ initialProject, onSave, onCancel, standa
                 <div ref={toolbarPlaceholderRef} style={{ height: toolbarPinned ? toolbarHeight : 0 }} />
                 <div ref={toolbarRef} className={toolbarClassName} style={toolbarPinned ? { width: toolbarRef.current?.style.width } : undefined}>
                     {/* Toolbar Buttons - Simplified for brevity */}
+                    {/* Text Styling */}
+                    <Tooltip content="Bold"><Button isIconOnly size="sm" variant="flat" onPress={() => toggleMark('bold')}><Bold size={16} /></Button></Tooltip>
+                    <Tooltip content="Italic"><Button isIconOnly size="sm" variant="flat" onPress={() => toggleMark('italic')}><Italic size={16} /></Button></Tooltip>
+                    <Tooltip content="Underline"><Button isIconOnly size="sm" variant="flat" onPress={() => toggleMark('underline')}><Underline size={16} /></Button></Tooltip>
+                    <Tooltip content="Strikethrough"><Button isIconOnly size="sm" variant="flat" onPress={() => toggleMark('strikethrough')}><Strikethrough size={16} /></Button></Tooltip>
+                    <Tooltip content="Code"><Button isIconOnly size="sm" variant="flat" onPress={() => toggleMark('code')}><Code size={16} /></Button></Tooltip>
+
+                    <div className="h-5 w-px bg-white/10" />
+
+                    {/* Headings */}
                     <Tooltip content="Body"><Button isIconOnly size="sm" variant="flat" onPress={() => setBlockType(NODES.p)}><Type size={16} /></Button></Tooltip>
                     <Tooltip content="H1"><Button isIconOnly size="sm" variant="flat" onPress={() => setBlockType(NODES.h1)}><Heading1 size={16} /></Button></Tooltip>
                     <Tooltip content="H2"><Button isIconOnly size="sm" variant="flat" onPress={() => setBlockType(NODES.h2)}><Heading2 size={16} /></Button></Tooltip>
                     <Tooltip content="H3"><Button isIconOnly size="sm" variant="flat" onPress={() => setBlockType(NODES.h3)}><Heading3 size={16} /></Button></Tooltip>
+
                     <div className="h-5 w-px bg-white/10" />
+
+                    {/* Special Blocks */}
+                    <Tooltip content="Quote"><Button isIconOnly size="sm" variant="flat" onPress={() => setBlockType(NODES.blockquote)}><Quote size={16} /></Button></Tooltip>
+                    <Tooltip content="Code Block"><Button isIconOnly size="sm" variant="flat" onPress={() => setBlockType(NODES.codeBlock)}><Code size={16} /></Button></Tooltip>
+                    <Tooltip content="Callout"><Button isIconOnly size="sm" variant="flat" onPress={() => setBlockType(NODES.callout)}><MessageSquare size={16} /></Button></Tooltip>
+
+                    <div className="h-5 w-px bg-white/10" />
+
+                    {/* Colors */}
+                    {/* Colors */}
+                    <Popover placement="bottom">
+                        <PopoverTrigger>
+                            <Button isIconOnly size="sm" variant="flat"><Palette size={16} /></Button>
+                        </PopoverTrigger>
+                        <PopoverContent>
+                            <ColorPicker
+                                label="Text Color"
+                                onChange={(color) => {
+                                    if (editor) (editor as any).addMark(STYLE_KEYS.color, color);
+                                }}
+                                customColors={customColors}
+                                onCustomColorAdd={(color) => setCustomColors(prev => [...prev, color])}
+                            />
+                        </PopoverContent>
+                    </Popover>
+
+                    <Popover placement="bottom">
+                        <PopoverTrigger>
+                            <Button isIconOnly size="sm" variant="flat"><Highlighter size={16} /></Button>
+                        </PopoverTrigger>
+                        <PopoverContent>
+                            <ColorPicker
+                                label="Highlight Color"
+                                onChange={(color) => {
+                                    if (editor) (editor as any).addMark(STYLE_KEYS.backgroundColor, color);
+                                }}
+                                customColors={customColors}
+                                onCustomColorAdd={(color) => setCustomColors(prev => [...prev, color])}
+                            />
+                        </PopoverContent>
+                    </Popover>
+
+                    <div className="h-5 w-px bg-white/10" />
+
+                    {/* Lists & Indentation */}
                     <Tooltip content="Bullet List"><Button isIconOnly size="sm" variant="flat" onPress={() => toggleList(editor, { listStyleType: ListStyleType.Disc })}><List size={16} /></Button></Tooltip>
                     <Tooltip content="Numbered List"><Button isIconOnly size="sm" variant="flat" onPress={() => toggleList(editor, { listStyleType: ListStyleType.Decimal })}><ListOrdered size={16} /></Button></Tooltip>
+                    <Tooltip content="Outdent"><Button isIconOnly size="sm" variant="flat" onPress={() => outdent(editor)}><IndentDecrease size={16} /></Button></Tooltip>
+                    <Tooltip content="Indent"><Button isIconOnly size="sm" variant="flat" onPress={() => indent(editor)}><IndentIncrease size={16} /></Button></Tooltip>
+
                     <div className="h-5 w-px bg-white/10" />
-                    <Tooltip content="Bold"><Button isIconOnly size="sm" variant="flat" onPress={() => toggleMark('bold')}><Bold size={16} /></Button></Tooltip>
-                    <Tooltip content="Italic"><Button isIconOnly size="sm" variant="flat" onPress={() => toggleMark('italic')}><Italic size={16} /></Button></Tooltip>
-                    <Tooltip content="Underline"><Button isIconOnly size="sm" variant="flat" onPress={() => toggleMark('underline')}><Underline size={16} /></Button></Tooltip>
-                    <div className="h-5 w-px bg-white/10" />
+
+                    {/* Insertions */}
+                    <Tooltip content="Link"><Button isIconOnly size="sm" variant="flat" onPress={handleInsertLink}><LinkIcon size={16} /></Button></Tooltip>
                     <Tooltip content="Image"><Button isIconOnly size="sm" variant="flat" onPress={openContentImagePicker}><ImagePlus size={16} /></Button></Tooltip>
+                    <Tooltip content="Divider"><Button isIconOnly size="sm" variant="flat" onPress={insertDivider}><Minus size={16} /></Button></Tooltip>
+                    <Tooltip content="Table"><Button isIconOnly size="sm" variant="flat" onPress={() => {
+                        Transforms.insertNodes(editor as any, {
+                            type: NODES.table,
+                            children: [
+                                { type: NODES.tr, children: [{ type: NODES.td, children: [{ text: '' }] }, { type: NODES.td, children: [{ text: '' }] }] },
+                                { type: NODES.tr, children: [{ type: NODES.td, children: [{ text: '' }] }, { type: NODES.td, children: [{ text: '' }] }] }
+                            ]
+                        } as any);
+                    }}><Table2 size={16} /></Button></Tooltip>
                 </div>
 
                 <div className="border border-white/10 rounded-xl bg-white/5">
-                    <Plate editor={editor} onValueChange={handleEditorChange}>
+                    <Plate editor={editor} onValueChange={handleEditorChange} renderLeaf={renderLeaf}>
                         <PlateContent className="min-h-[240px] px-4 py-3 text-sm outline-none" placeholder="Write here..." />
                         <input ref={contentImageInputRef} type="file" accept="image/*" className="hidden" onChange={handleContentImagePick} />
                     </Plate>

@@ -48,3 +48,34 @@ export const dataUrlToBlob = (dataUrl: string) => {
 export const preventMouseDown = (event: React.MouseEvent) => {
     event.preventDefault();
 };
+
+export const parseMarkdownTable = (text: string) => {
+    const lines = text.trim().split('\n');
+    if (lines.length < 2) return null;
+
+    // Check if it looks like a markdown table
+    // Row 1: | col | col |
+    // Row 2: | --- | --- |
+    const headerLine = lines[0].trim();
+    const separatorLine = lines[1].trim();
+
+    if (!headerLine.startsWith('|') || !headerLine.endsWith('|')) return null;
+    if (!separatorLine.startsWith('|') || !separatorLine.endsWith('|')) return null;
+    if (!separatorLine.includes('---')) return null;
+
+    const rows: { children: { text: string }[][] }[] = [];
+
+    // Process header
+    const headers = headerLine.slice(1, -1).split('|').map(c => c.trim());
+    rows.push({ children: headers.map(text => [{ text }]) });
+
+    // Process body (skip separator)
+    for (let i = 2; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line.startsWith('|') || !line.endsWith('|')) continue;
+        const cells = line.slice(1, -1).split('|').map(c => c.trim());
+        rows.push({ children: cells.map(text => [{ text }]) });
+    }
+
+    return rows;
+};
