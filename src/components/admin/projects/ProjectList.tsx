@@ -200,27 +200,35 @@ export default function ProjectList() {
 
     const handleDragEnd = async (event: DragEndEvent) => {
         const { active, over } = event;
-        if (active.id !== over?.id) {
-            setProjects((items) => {
-                const oldIndex = items.findIndex(p => p.id === active.id);
-                const newIndex = items.findIndex(p => p.id === over?.id);
-                const newItems = arrayMove(items, oldIndex, newIndex);
+        if (!over || active.id === over.id) return;
 
-                // Update display_order in backend
-                // (Debounce or simple optimization omitted for brevity, essentially update all)
-                const updates = newItems.map((item, index) => ({
-                    id: item.id,
-                    display_order: index,
-                    updated_at: new Date().toISOString()
-                }));
+        const previousItems = projects;
+        const oldIndex = projects.findIndex(p => p.id === active.id);
+        const newIndex = projects.findIndex(p => p.id === over.id);
+        if (oldIndex < 0 || newIndex < 0) return;
 
-                // Fire and forget update
-                supabase.from('projects').upsert(updates).then(({ error }) => {
-                    if (error) toast.error('Failed to save order');
-                });
+        const newItems = arrayMove(projects, oldIndex, newIndex);
+        setProjects(newItems);
 
-                return newItems;
-            });
+        const updates = newItems.map((item, index) => ({
+            id: item.id,
+            display_order: index,
+        }));
+
+        const results = await Promise.all(
+            updates.map((update) =>
+                supabase
+                    .from('projects')
+                    .update({ display_order: update.display_order })
+                    .eq('id', update.id)
+            )
+        );
+
+        const errors = results.map((result) => result.error).filter(Boolean);
+        if (errors.length > 0) {
+            console.error('Failed to save order:', errors);
+            toast.error('Failed to save order');
+            setProjects(previousItems);
         }
     };
 
