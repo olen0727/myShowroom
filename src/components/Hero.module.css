@@ -34,6 +34,21 @@
     animation: bgPulse 10s ease-in-out infinite alternate;
 }
 
+.roles {
+    display: inline-flex;
+    position: relative;
+    width: auto;
+    font-size: 1.5em;
+    min-width: 4em;
+    height: 1.4em;
+    vertical-align: bottom;
+    justify-content: center;
+    margin-left: 0.1em;
+    margin-right:0.1em;
+    font-weight: bold;
+    overflow: hidden;
+}
+
 /* Interactive Mouse Glow */
 .mouseGlow {
     position: absolute;

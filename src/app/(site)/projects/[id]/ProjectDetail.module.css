@@ -245,6 +245,10 @@
     font-family: 'SFMono-Regular', ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
 }
 
+.contentShell :global(.column) {
+    padding:1.5rem;
+}
+
 @media (max-width: 768px) {
     .page {
         padding: 5rem 1.25rem 5rem;

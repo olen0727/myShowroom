@@ -67,20 +67,7 @@ export default function Hero() {
                     transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
                 >
                     {profile?.hero_subtitle_prefix || '我是一名'}
-                    <span style={{
-                        display: 'inline-flex',
-                        position: 'relative',
-                        width: 'auto',
-                        fontSize: '1.5em',
-                        minWidth: '5.5em',
-                        height: '1.4em',
-                        verticalAlign: 'bottom',
-                        justifyContent: 'center',
-                        marginLeft: '0.1em',
-                        marginRight: '0.1em',
-                        fontWeight: 'bold',
-                        overflow: 'hidden'
-                    }}>
+                    <span className={styles.roles}>
                         <AnimatePresence mode="wait">
                             {(() => {
                                 const currentRoleStr = roles[index] || '';

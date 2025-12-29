@@ -131,7 +131,14 @@ type ColumnGroupElementProps = {
 };
 
 export const ColumnGroupElement = ({ attributes, children }: ColumnGroupElementProps) => (
-    <div {...attributes} className="my-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div
+        {...attributes}
+        className={[
+            'column_group',
+            'my-3 grid grid-cols-1 md:grid-cols-2 gap-4',
+            attributes.className,
+        ].filter(Boolean).join(' ')}
+    >
         {children}
     </div>
 );
@@ -142,7 +149,14 @@ type ColumnElementProps = {
 };
 
 export const ColumnElement = ({ attributes, children }: ColumnElementProps) => (
-    <div {...attributes} className="min-w-0 border border-white/5 rounded-lg p-2 bg-white/5">
+    <div
+        {...attributes}
+        className={[
+            'column',
+            'min-w-0 border border-white/5 rounded-lg p-2 bg-white/5',
+            attributes.className,
+        ].filter(Boolean).join(' ')}
+    >
         {children}
     </div>
 );
