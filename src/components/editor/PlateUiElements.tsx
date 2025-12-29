@@ -128,20 +128,29 @@ export const TableHeaderCellElement = ({ attributes, children }: TableCellElemen
 type ColumnGroupElementProps = {
     attributes: React.HTMLAttributes<HTMLDivElement>;
     children: React.ReactNode;
+    element?: {
+        children?: Array<{ type?: string }>;
+    };
 };
 
-export const ColumnGroupElement = ({ attributes, children }: ColumnGroupElementProps) => (
-    <div
-        {...attributes}
-        className={[
-            'column_group',
-            'my-3 grid grid-cols-1 md:grid-cols-2 gap-4',
-            attributes.className,
-        ].filter(Boolean).join(' ')}
-    >
-        {children}
-    </div>
-);
+export const ColumnGroupElement = ({ attributes, children, element }: ColumnGroupElementProps) => {
+    const childCount = Array.isArray(element?.children) ? element.children.length : React.Children.count(children);
+    const columnClass = childCount >= 3 ? 'md:grid-cols-3' : childCount === 2 ? 'md:grid-cols-2' : 'md:grid-cols-1';
+
+    return (
+        <div
+            {...attributes}
+            className={[
+                'column_group',
+                'my-3 grid grid-cols-1 gap-4',
+                columnClass,
+                attributes.className,
+            ].filter(Boolean).join(' ')}
+        >
+            {children}
+        </div>
+    );
+};
 
 type ColumnElementProps = {
     attributes: React.HTMLAttributes<HTMLDivElement>;

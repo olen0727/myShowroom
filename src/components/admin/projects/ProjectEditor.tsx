@@ -42,7 +42,8 @@ import {
     Table2,
     Trash2,
     GripVertical,
-    Columns
+    Columns,
+    Columns3
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Image from 'next/image';
@@ -697,6 +698,16 @@ export default function ProjectEditor({ initialProject, onSave, onCancel, standa
                             ]
                         } as any);
                     }}><Columns size={16} /></Button></Tooltip>
+                    <Tooltip content="Three Columns"><Button isIconOnly size="sm" variant="flat" onPress={() => {
+                        Transforms.insertNodes(editor as any, {
+                            type: 'column_group',
+                            children: [
+                                { type: 'column', children: [{ type: NODES.p, children: [{ text: 'Column 1' }] }] },
+                                { type: 'column', children: [{ type: NODES.p, children: [{ text: 'Column 2' }] }] },
+                                { type: 'column', children: [{ type: NODES.p, children: [{ text: 'Column 3' }] }] }
+                            ]
+                        } as any);
+                    }}><Columns3 size={16} /></Button></Tooltip>
                     <Tooltip content="Divider"><Button isIconOnly size="sm" variant="flat" onPress={insertDivider}><Minus size={16} /></Button></Tooltip>
                     <Tooltip content="Table"><Button isIconOnly size="sm" variant="flat" onPress={() => {
                         Transforms.insertNodes(editor as any, {
