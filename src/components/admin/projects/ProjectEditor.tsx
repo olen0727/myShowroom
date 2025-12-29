@@ -525,6 +525,22 @@ export default function ProjectEditor({ initialProject, onSave, onCancel, standa
                         variant="bordered"
                         minRows={5}
                     />
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                        <Input
+                            label="Demo Link"
+                            startContent={<ExternalLink size={16} />}
+                            value={project.demo_url || ''}
+                            onValueChange={val => setProject({ ...project, demo_url: val })}
+                            variant="bordered"
+                        />
+                        <Input
+                            label="GitHub Link"
+                            startContent={<Github size={16} />}
+                            value={project.github_url || ''}
+                            onValueChange={val => setProject({ ...project, github_url: val })}
+                            variant="bordered"
+                        />
+                    </div>
                     {/* Tags Section */}
                     <div className="space-y-2">
                         <Input
