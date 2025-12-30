@@ -9,45 +9,16 @@ import {
     Textarea,
     Select,
     SelectItem,
-    Tooltip,
-    Popover,
-    PopoverTrigger,
-    PopoverContent,
 } from "@nextui-org/react";
-import { ColorPicker } from '@/components/admin/shared/ColorPicker';
 import {
     ExternalLink,
     Github,
-    Heading1,
-    Heading2,
-    Heading3,
-    List,
-    ListOrdered,
-    Quote,
-    Code,
-    ImagePlus,
-    Minus,
-    IndentIncrease,
-    IndentDecrease,
-    Bold,
-    Italic,
-    Underline,
-    Strikethrough,
-    Palette,
-    Highlighter,
-    Link as LinkIcon,
-    MessageSquare,
-    Type,
-    SlidersHorizontal,
-    Table2,
     Trash2,
-    Columns,
-    Columns3
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Image from 'next/image';
 import { STYLE_KEYS, NODES, type Value } from 'platejs';
-import { Editor, Element, Transforms } from 'slate';
+import { Transforms } from 'slate';
 import type { Range } from 'platejs';
 import {
     Plate,
@@ -60,9 +31,7 @@ import {
 import { BasicBlocksPlugin, BasicMarksPlugin } from '@platejs/basic-nodes/react';
 import { toggleList, ListStyleType } from '@platejs/list';
 import { ListPlugin } from '@platejs/list/react';
-import { upsertLink } from '@platejs/link';
 import { LinkPlugin } from '@platejs/link/react';
-import { indent, outdent } from '@platejs/indent';
 import { IndentPlugin } from '@platejs/indent/react';
 import { ImagePlugin } from '@platejs/media/react';
 
@@ -104,6 +73,7 @@ import {
     ColumnGroupElement,
     ColumnElement
 } from '@/components/editor/PlateUiElements';
+import { ProjectEditorToolbar } from '@/components/admin/projects/ProjectEditorToolbar';
 
 import { SortableTagItem } from '@/components/admin/shared/SortableTagItem';
 
@@ -134,12 +104,6 @@ const renderLeaf = ({ attributes, children, leaf }: {
     if (highlightColor) style.backgroundColor = highlightColor;
 
     return <span {...attributes} style={style}>{children}</span>;
-};
-
-const EMPTY_COLUMN_STYLE = {
-    backgroundColor: '',
-    borderColor: '',
-    borderWidth: '',
 };
 
 const StyledBlocksPlugin = BasicBlocksPlugin
@@ -189,11 +153,6 @@ export default function ProjectEditor({ initialProject, onSave, onCancel, standa
     const [saving, setSaving] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [contentUploading, setContentUploading] = useState(false);
-    const [customColors, setCustomColors] = useState<string[]>([]);
-    const [customColorsLoaded, setCustomColorsLoaded] = useState(false);
-    const [columnStyleDraft, setColumnStyleDraft] = useState(EMPTY_COLUMN_STYLE);
-    const [columnStyleContext, setColumnStyleContext] = useState<'none' | 'column' | 'group'>('none');
-    const [isColumnStyleOpen, setIsColumnStyleOpen] = useState(false);
 
     // Slash command state (kept minimal for now)
     const [slashState, setSlashState] = useState<SlashState>({ open: false, range: null, query: '' });
@@ -204,76 +163,8 @@ export default function ProjectEditor({ initialProject, onSave, onCancel, standa
     const toolbarRef = useRef<HTMLDivElement>(null);
     const toolbarPlaceholderRef = useRef<HTMLDivElement>(null);
     const toolbarAnchorRef = useRef<HTMLDivElement>(null);
-    const customColorsSyncDisabledRef = useRef(false);
-    const skipInitialCustomColorsSyncRef = useRef(true);
     const [toolbarPinned, setToolbarPinned] = useState(false);
     const [toolbarHeight, setToolbarHeight] = useState(0);
-
-    useEffect(() => {
-        let isMounted = true;
-
-        const loadCustomColors = async () => {
-            try {
-                const { data: { user } } = await supabase.auth.getUser();
-                if (!user) return;
-
-                const { data, error } = await supabase
-                    .from('profile')
-                    .select('editor_custom_colors')
-                    .eq('id', user.id)
-                    .single();
-
-                if (error && error.code !== 'PGRST116') throw error;
-
-                const colors = data?.editor_custom_colors;
-                if (Array.isArray(colors) && isMounted) {
-                    setCustomColors(colors.filter((color) => typeof color === 'string'));
-                }
-            } catch (error) {
-                console.warn('Failed to load custom colors from server', error);
-                toast.error('Failed to load custom colors from server');
-            } finally {
-                if (isMounted) setCustomColorsLoaded(true);
-            }
-        };
-
-        loadCustomColors();
-
-        return () => {
-            isMounted = false;
-        };
-    }, []);
-
-    useEffect(() => {
-        if (!customColorsLoaded || customColorsSyncDisabledRef.current) return;
-        if (skipInitialCustomColorsSyncRef.current) {
-            skipInitialCustomColorsSyncRef.current = false;
-            return;
-        }
-
-        const syncCustomColors = async () => {
-            try {
-                const { data: { user } } = await supabase.auth.getUser();
-                if (!user) return;
-
-                const { error } = await supabase
-                    .from('profile')
-                    .upsert({
-                        id: user.id,
-                        editor_custom_colors: customColors,
-                        updated_at: new Date().toISOString(),
-                    });
-
-                if (error) throw error;
-            } catch (error) {
-                console.warn('Failed to sync custom colors', error);
-                customColorsSyncDisabledRef.current = true;
-                toast.error('Failed to sync custom colors to server');
-            }
-        };
-
-        syncCustomColors();
-    }, [customColors, customColorsLoaded]);
 
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -376,91 +267,6 @@ export default function ProjectEditor({ initialProject, onSave, onCancel, standa
     ]), [autoformatRules, handleContentImageUpload, tablePastePlugin]);
 
     const editor = usePlateEditor({ plugins, value: project.content as Value }, [editorId]);
-
-    const getColumnTargets = useCallback(() => {
-        if (!editor?.selection) return null;
-        const columnEntry = Editor.above(editor, {
-            at: editor.selection,
-            match: (node) => Element.isElement(node) && node.type === NODES.column,
-        }) as any;
-        if (!columnEntry) return null;
-        const groupEntry = Editor.above(editor, {
-            at: editor.selection,
-            match: (node) => Element.isElement(node) && node.type === NODES.columnGroup,
-        }) as any;
-        return { columnEntry, groupEntry };
-    }, [editor]);
-
-    const syncColumnStyleDraft = useCallback(() => {
-        const targets = getColumnTargets();
-        if (!targets?.columnEntry) {
-            setColumnStyleDraft(EMPTY_COLUMN_STYLE);
-            setColumnStyleContext('none');
-            return;
-        }
-
-        const [node] = targets.columnEntry as any;
-        const rawBorderWidth = node?.columnBorderWidth;
-        const parsedBorderWidth = typeof rawBorderWidth === 'number'
-            ? rawBorderWidth
-            : typeof rawBorderWidth === 'string' && rawBorderWidth.trim()
-                ? Number(rawBorderWidth)
-                : null;
-
-        setColumnStyleDraft({
-            backgroundColor: typeof node?.columnBackgroundColor === 'string' ? node.columnBackgroundColor : '',
-            borderColor: typeof node?.columnBorderColor === 'string' ? node.columnBorderColor : '',
-            borderWidth: Number.isFinite(parsedBorderWidth) ? String(parsedBorderWidth) : '',
-        });
-        setColumnStyleContext(targets.groupEntry ? 'group' : 'column');
-    }, [getColumnTargets]);
-
-    useEffect(() => {
-        if (isColumnStyleOpen) {
-            syncColumnStyleDraft();
-        }
-    }, [isColumnStyleOpen, syncColumnStyleDraft]);
-
-    const applyColumnStyle = useCallback((draft: typeof EMPTY_COLUMN_STYLE) => {
-        if (!editor) return;
-        const targets = getColumnTargets();
-        if (!targets?.columnEntry) {
-            toast.error('Place the cursor inside a column to update its style.');
-            return;
-        }
-
-        const backgroundColor = draft.backgroundColor.trim();
-        const borderColor = draft.borderColor.trim();
-        const borderWidthValue = draft.borderWidth.trim();
-        const borderWidth = borderWidthValue === '' ? null : Number(borderWidthValue);
-        const props: Record<string, unknown> = {};
-        const unset: string[] = [];
-
-        if (backgroundColor) props.columnBackgroundColor = backgroundColor;
-        else unset.push('columnBackgroundColor');
-
-        if (borderColor) props.columnBorderColor = borderColor;
-        else unset.push('columnBorderColor');
-
-        if (borderWidthValue !== '' && Number.isFinite(borderWidth)) props.columnBorderWidth = borderWidth;
-        else unset.push('columnBorderWidth');
-
-        const options = targets.groupEntry
-            ? { at: targets.groupEntry[1], match: (node: any) => Element.isElement(node) && node.type === NODES.column }
-            : { at: targets.columnEntry[1] };
-
-        if (Object.keys(props).length > 0) {
-            Transforms.setNodes(editor, props as any, options as any);
-        }
-        if (unset.length > 0) {
-            Transforms.unsetNodes(editor, unset as any, options as any);
-        }
-    }, [editor, getColumnTargets]);
-
-    const handleResetColumnStyle = useCallback(() => {
-        setColumnStyleDraft(EMPTY_COLUMN_STYLE);
-        applyColumnStyle(EMPTY_COLUMN_STYLE);
-    }, [applyColumnStyle]);
 
     const handleEditorChange = useCallback(({ value }: { value: Value }) => {
         setProject(prev => ({ ...prev, content: value }));
@@ -608,32 +414,9 @@ export default function ProjectEditor({ initialProject, onSave, onCancel, standa
         }
     };
 
-    // --- Toolbar Actions ---
-    // --- Actions ---
-    const setBlockType = (type: string) => {
-        if (!editor) return;
-        Transforms.setNodes(editor as any, { type } as any);
-    };
-
-    const toggleMark = (type: string) => {
-        if (!editor) return;
-        const marks = Editor.marks(editor as any) as Record<string, any> | null;
-        if (marks?.[type]) {
-            (editor as any).removeMark(type);
-        } else {
-            (editor as any).addMark(type, true);
-        }
-    };
-
-    const insertDivider = () => {
-        if (!editor) return;
-        Transforms.insertNodes(editor as any, { type: NODES.hr, children: [{ text: '' }] } as any);
-    };
-    const openContentImagePicker = () => contentImageInputRef.current?.click();
-    const handleInsertLink = () => {
-        const url = window.prompt('Enter link URL:');
-        if (url) upsertLink(editor, { url, target: '_blank' });
-    };
+    const openContentImagePicker = useCallback(() => {
+        contentImageInputRef.current?.click();
+    }, []);
 
     return (
         <div className="space-y-6">
@@ -763,182 +546,7 @@ export default function ProjectEditor({ initialProject, onSave, onCancel, standa
                 <div ref={toolbarAnchorRef} className="h-0" />
                 <div ref={toolbarPlaceholderRef} style={{ height: toolbarPinned ? toolbarHeight : 0 }} />
                 <div ref={toolbarRef} className={toolbarClassName} style={toolbarPinned ? { width: toolbarRef.current?.style.width } : undefined}>
-                    {/* Toolbar Buttons - Simplified for brevity */}
-                    {/* Text Styling */}
-                    <Tooltip content="Bold"><Button isIconOnly size="sm" variant="flat" onPress={() => toggleMark('bold')}><Bold size={16} /></Button></Tooltip>
-                    <Tooltip content="Italic"><Button isIconOnly size="sm" variant="flat" onPress={() => toggleMark('italic')}><Italic size={16} /></Button></Tooltip>
-                    <Tooltip content="Underline"><Button isIconOnly size="sm" variant="flat" onPress={() => toggleMark('underline')}><Underline size={16} /></Button></Tooltip>
-                    <Tooltip content="Strikethrough"><Button isIconOnly size="sm" variant="flat" onPress={() => toggleMark('strikethrough')}><Strikethrough size={16} /></Button></Tooltip>
-                    <Tooltip content="Code"><Button isIconOnly size="sm" variant="flat" onPress={() => toggleMark('code')}><Code size={16} /></Button></Tooltip>
-
-                    <div className="h-5 w-px bg-white/10" />
-
-                    {/* Headings */}
-                    <Tooltip content="Body"><Button isIconOnly size="sm" variant="flat" onPress={() => setBlockType(NODES.p)}><Type size={16} /></Button></Tooltip>
-                    <Tooltip content="H1"><Button isIconOnly size="sm" variant="flat" onPress={() => setBlockType(NODES.h1)}><Heading1 size={16} /></Button></Tooltip>
-                    <Tooltip content="H2"><Button isIconOnly size="sm" variant="flat" onPress={() => setBlockType(NODES.h2)}><Heading2 size={16} /></Button></Tooltip>
-                    <Tooltip content="H3"><Button isIconOnly size="sm" variant="flat" onPress={() => setBlockType(NODES.h3)}><Heading3 size={16} /></Button></Tooltip>
-
-                    <div className="h-5 w-px bg-white/10" />
-
-                    {/* Special Blocks */}
-                    <Tooltip content="Quote"><Button isIconOnly size="sm" variant="flat" onPress={() => setBlockType(NODES.blockquote)}><Quote size={16} /></Button></Tooltip>
-                    <Tooltip content="Code Block"><Button isIconOnly size="sm" variant="flat" onPress={() => setBlockType(NODES.codeBlock)}><Code size={16} /></Button></Tooltip>
-                    <Tooltip content="Callout"><Button isIconOnly size="sm" variant="flat" onPress={() => setBlockType(NODES.callout)}><MessageSquare size={16} /></Button></Tooltip>
-
-                    <div className="h-5 w-px bg-white/10" />
-
-                    {/* Colors */}
-                    {/* Colors */}
-                    <Popover placement="bottom">
-                        <PopoverTrigger>
-                            <Button isIconOnly size="sm" variant="flat"><Palette size={16} /></Button>
-                        </PopoverTrigger>
-                        <PopoverContent>
-                            <ColorPicker
-                                label="Text Color"
-                                onChange={(color) => {
-                                    if (editor) (editor as any).addMark(STYLE_KEYS.color, color);
-                                }}
-                                customColors={customColors}
-                                onCustomColorAdd={(color) => setCustomColors(prev => [...prev, color])}
-                                onCustomColorDelete={(color) => setCustomColors(prev => prev.filter(c => c !== color))}
-                            />
-                        </PopoverContent>
-                    </Popover>
-
-                    <Popover placement="bottom">
-                        <PopoverTrigger>
-                            <Button isIconOnly size="sm" variant="flat"><Highlighter size={16} /></Button>
-                        </PopoverTrigger>
-                        <PopoverContent>
-                            <ColorPicker
-                                label="Highlight Color"
-                                onChange={(color) => {
-                                    if (editor) (editor as any).addMark(STYLE_KEYS.backgroundColor, color);
-                                }}
-                                customColors={customColors}
-                                onCustomColorAdd={(color) => setCustomColors(prev => [...prev, color])}
-                                onCustomColorDelete={(color) => setCustomColors(prev => prev.filter(c => c !== color))}
-                            />
-                        </PopoverContent>
-                    </Popover>
-
-                    <div className="h-5 w-px bg-white/10" />
-
-                    {/* Lists & Indentation */}
-                    <Tooltip content="Bullet List"><Button isIconOnly size="sm" variant="flat" onPress={() => toggleList(editor, { listStyleType: ListStyleType.Disc })}><List size={16} /></Button></Tooltip>
-                    <Tooltip content="Numbered List"><Button isIconOnly size="sm" variant="flat" onPress={() => toggleList(editor, { listStyleType: ListStyleType.Decimal })}><ListOrdered size={16} /></Button></Tooltip>
-                    <Tooltip content="Outdent"><Button isIconOnly size="sm" variant="flat" onPress={() => outdent(editor)}><IndentDecrease size={16} /></Button></Tooltip>
-                    <Tooltip content="Indent"><Button isIconOnly size="sm" variant="flat" onPress={() => indent(editor)}><IndentIncrease size={16} /></Button></Tooltip>
-
-                    <div className="h-5 w-px bg-white/10" />
-
-                    {/* Insertions */}
-                    <Tooltip content="Link"><Button isIconOnly size="sm" variant="flat" onPress={handleInsertLink}><LinkIcon size={16} /></Button></Tooltip>
-                    <Tooltip content="Image"><Button isIconOnly size="sm" variant="flat" onPress={openContentImagePicker}><ImagePlus size={16} /></Button></Tooltip>
-                    <Tooltip content="Two Columns"><Button isIconOnly size="sm" variant="flat" onPress={() => {
-                        Transforms.insertNodes(editor as any, {
-                            type: 'column_group',
-                            children: [
-                                { type: 'column', children: [{ type: NODES.p, children: [{ text: 'Left column' }] }] },
-                                { type: 'column', children: [{ type: NODES.p, children: [{ text: 'Right column' }] }] }
-                            ]
-                        } as any);
-                    }}><Columns size={16} /></Button></Tooltip>
-                    <Tooltip content="Three Columns"><Button isIconOnly size="sm" variant="flat" onPress={() => {
-                        Transforms.insertNodes(editor as any, {
-                            type: 'column_group',
-                            children: [
-                                { type: 'column', children: [{ type: NODES.p, children: [{ text: 'Column 1' }] }] },
-                                { type: 'column', children: [{ type: NODES.p, children: [{ text: 'Column 2' }] }] },
-                                { type: 'column', children: [{ type: NODES.p, children: [{ text: 'Column 3' }] }] }
-                            ]
-                        } as any);
-                    }}><Columns3 size={16} /></Button></Tooltip>
-                    <Popover placement="bottom" shouldFlip={false} offset={8} isOpen={isColumnStyleOpen} onOpenChange={setIsColumnStyleOpen}>
-                        <PopoverTrigger>
-                            <Button isIconOnly size="sm" variant="flat" aria-label="Column style">
-                                <SlidersHorizontal size={16} />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="max-h-[70vh] overflow-y-auto overscroll-contain">
-                            <div className="w-[46rem] max-w-[92vw] p-3">
-                                <div className="space-y-3">
-                                    <div className="text-xs font-semibold text-default-500">Column Style</div>
-                                    <div className="text-[11px] text-default-400">
-                                        {/* {columnStyleContext === 'none'
-                                            ? 'Place the cursor inside a column to edit.'
-                                            : columnStyleContext === 'group'
-                                                ? 'Applies to all columns in this layout.'
-                                                : 'Applies to the selected column.'} */}
-                                    </div>
-                                    <div className="grid gap-4 md:grid-cols-2">
-                                        <div className="space-y-3">
-                                            <ColorPicker
-                                                label="Background"
-                                                className="w-full"
-                                                color={columnStyleDraft.backgroundColor}
-                                                onChange={(color) => setColumnStyleDraft((prev) => ({ ...prev, backgroundColor: color }))}
-                                                customColors={customColors}
-                                                onCustomColorAdd={(color) => setCustomColors(prev => [...prev, color])}
-                                                onCustomColorDelete={(color) => setCustomColors(prev => prev.filter(c => c !== color))}
-                                            />
-                                        </div>
-                                        <div className="space-y-3">
-                                            <ColorPicker
-                                                label="Border Color"
-                                                className="w-full"
-                                                color={columnStyleDraft.borderColor}
-                                                onChange={(color) => setColumnStyleDraft((prev) => ({ ...prev, borderColor: color }))}
-                                                customColors={customColors}
-                                                onCustomColorAdd={(color) => setCustomColors(prev => [...prev, color])}
-                                                onCustomColorDelete={(color) => setCustomColors(prev => prev.filter(c => c !== color))}
-                                            />
-                                            <Input
-                                                label="Border Width (px)"
-                                                type="number"
-                                                min="0"
-                                                size="sm"
-                                                variant="bordered"
-                                                value={columnStyleDraft.borderWidth}
-                                                onValueChange={(value) => setColumnStyleDraft((prev) => ({ ...prev, borderWidth: value }))}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <Button
-                                            size="sm"
-                                            color="primary"
-                                            onPress={() => applyColumnStyle(columnStyleDraft)}
-                                            isDisabled={columnStyleContext === 'none'}
-                                        >
-                                            Apply
-                                        </Button>
-                                        <Button
-                                            size="sm"
-                                            variant="flat"
-                                            onPress={handleResetColumnStyle}
-                                            isDisabled={columnStyleContext === 'none'}
-                                        >
-                                            Reset
-                                        </Button>
-                                    </div>
-                                    <div className="text-[11px] text-default-400">Use Reset to clear colors.</div>
-                                </div>
-                            </div>
-                        </PopoverContent>
-                    </Popover>
-                    <Tooltip content="Divider"><Button isIconOnly size="sm" variant="flat" onPress={insertDivider}><Minus size={16} /></Button></Tooltip>
-                    <Tooltip content="Table"><Button isIconOnly size="sm" variant="flat" onPress={() => {
-                        Transforms.insertNodes(editor as any, {
-                            type: NODES.table,
-                            children: [
-                                { type: NODES.tr, children: [{ type: NODES.td, children: [{ text: '' }] }, { type: NODES.td, children: [{ text: '' }] }] },
-                                { type: NODES.tr, children: [{ type: NODES.td, children: [{ text: '' }] }, { type: NODES.td, children: [{ text: '' }] }] }
-                            ]
-                        } as any);
-                    }}><Table2 size={16} /></Button></Tooltip>
+                    <ProjectEditorToolbar editor={editor} onOpenImagePicker={openContentImagePicker} />
                 </div>
 
                 <div className="border border-white/10 rounded-xl bg-white/5">
