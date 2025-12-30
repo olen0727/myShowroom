@@ -190,6 +190,7 @@ export default function ProjectEditor({ initialProject, onSave, onCancel, standa
     const [uploading, setUploading] = useState(false);
     const [contentUploading, setContentUploading] = useState(false);
     const [customColors, setCustomColors] = useState<string[]>([]);
+    const [customColorsLoaded, setCustomColorsLoaded] = useState(false);
     const [columnStyleDraft, setColumnStyleDraft] = useState(EMPTY_COLUMN_STYLE);
     const [columnStyleContext, setColumnStyleContext] = useState<'none' | 'column' | 'group'>('none');
     const [isColumnStyleOpen, setIsColumnStyleOpen] = useState(false);
@@ -203,8 +204,76 @@ export default function ProjectEditor({ initialProject, onSave, onCancel, standa
     const toolbarRef = useRef<HTMLDivElement>(null);
     const toolbarPlaceholderRef = useRef<HTMLDivElement>(null);
     const toolbarAnchorRef = useRef<HTMLDivElement>(null);
+    const customColorsSyncDisabledRef = useRef(false);
+    const skipInitialCustomColorsSyncRef = useRef(true);
     const [toolbarPinned, setToolbarPinned] = useState(false);
     const [toolbarHeight, setToolbarHeight] = useState(0);
+
+    useEffect(() => {
+        let isMounted = true;
+
+        const loadCustomColors = async () => {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+
+                const { data, error } = await supabase
+                    .from('profile')
+                    .select('editor_custom_colors')
+                    .eq('id', user.id)
+                    .single();
+
+                if (error && error.code !== 'PGRST116') throw error;
+
+                const colors = data?.editor_custom_colors;
+                if (Array.isArray(colors) && isMounted) {
+                    setCustomColors(colors.filter((color) => typeof color === 'string'));
+                }
+            } catch (error) {
+                console.warn('Failed to load custom colors from server', error);
+                toast.error('Failed to load custom colors from server');
+            } finally {
+                if (isMounted) setCustomColorsLoaded(true);
+            }
+        };
+
+        loadCustomColors();
+
+        return () => {
+            isMounted = false;
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!customColorsLoaded || customColorsSyncDisabledRef.current) return;
+        if (skipInitialCustomColorsSyncRef.current) {
+            skipInitialCustomColorsSyncRef.current = false;
+            return;
+        }
+
+        const syncCustomColors = async () => {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+
+                const { error } = await supabase
+                    .from('profile')
+                    .upsert({
+                        id: user.id,
+                        editor_custom_colors: customColors,
+                        updated_at: new Date().toISOString(),
+                    });
+
+                if (error) throw error;
+            } catch (error) {
+                console.warn('Failed to sync custom colors', error);
+                customColorsSyncDisabledRef.current = true;
+                toast.error('Failed to sync custom colors to server');
+            }
+        };
+
+        syncCustomColors();
+    }, [customColors, customColorsLoaded]);
 
     const sensors = useSensors(
         useSensor(PointerSensor),
