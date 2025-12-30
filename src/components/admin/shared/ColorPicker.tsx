@@ -10,6 +10,7 @@ interface ColorPickerProps {
     customColors?: string[];
     onCustomColorAdd?: (color: string) => void;
     onCustomColorDelete?: (color: string) => void;
+    className?: string;
 }
 
 const DEFAULT_COLORS = [
@@ -37,7 +38,8 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
     label,
     customColors = [],
     onCustomColorAdd,
-    onCustomColorDelete
+    onCustomColorDelete,
+    className
 }) => {
     const inputRef = useRef<HTMLInputElement>(null);
     const selectedColor = normalizeHexColor(color || '');
@@ -59,7 +61,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
     };
 
     return (
-        <div className="p-3 w-64 bg-content1 rounded-lg shadow-sm">
+        <div className={['p-3 w-64 bg-content1 rounded-lg shadow-sm', className].filter(Boolean).join(' ')}>
             {label && <div className="text-xs font-semibold text-default-500 mb-2">{label}</div>}
 
             {/* Custom Colors Section */}

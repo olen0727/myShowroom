@@ -787,66 +787,76 @@ export default function ProjectEditor({ initialProject, onSave, onCancel, standa
                             ]
                         } as any);
                     }}><Columns3 size={16} /></Button></Tooltip>
-                    <Popover placement="bottom" isOpen={isColumnStyleOpen} onOpenChange={setIsColumnStyleOpen}>
+                    <Popover placement="bottom" shouldFlip={false} offset={8} isOpen={isColumnStyleOpen} onOpenChange={setIsColumnStyleOpen}>
                         <PopoverTrigger>
                             <Button isIconOnly size="sm" variant="flat" aria-label="Column style">
                                 <SlidersHorizontal size={16} />
                             </Button>
                         </PopoverTrigger>
-                        <PopoverContent>
-                            <div className="w-64 space-y-3 p-3">
-                                <div className="text-xs font-semibold text-default-500">Column Style</div>
-                                <div className="text-[11px] text-default-400">
-                                    {columnStyleContext === 'none'
-                                        ? 'Place the cursor inside a column to edit.'
-                                        : columnStyleContext === 'group'
-                                            ? 'Applies to all columns in this layout.'
-                                            : 'Applies to the selected column.'}
+                        <PopoverContent className="max-h-[70vh] overflow-y-auto overscroll-contain">
+                            <div className="w-[46rem] max-w-[92vw] p-3">
+                                <div className="space-y-3">
+                                    <div className="text-xs font-semibold text-default-500">Column Style</div>
+                                    <div className="text-[11px] text-default-400">
+                                        {/* {columnStyleContext === 'none'
+                                            ? 'Place the cursor inside a column to edit.'
+                                            : columnStyleContext === 'group'
+                                                ? 'Applies to all columns in this layout.'
+                                                : 'Applies to the selected column.'} */}
+                                    </div>
+                                    <div className="grid gap-4 md:grid-cols-2">
+                                        <div className="space-y-3">
+                                            <ColorPicker
+                                                label="Background"
+                                                className="w-full"
+                                                color={columnStyleDraft.backgroundColor}
+                                                onChange={(color) => setColumnStyleDraft((prev) => ({ ...prev, backgroundColor: color }))}
+                                                customColors={customColors}
+                                                onCustomColorAdd={(color) => setCustomColors(prev => [...prev, color])}
+                                                onCustomColorDelete={(color) => setCustomColors(prev => prev.filter(c => c !== color))}
+                                            />
+                                        </div>
+                                        <div className="space-y-3">
+                                            <ColorPicker
+                                                label="Border Color"
+                                                className="w-full"
+                                                color={columnStyleDraft.borderColor}
+                                                onChange={(color) => setColumnStyleDraft((prev) => ({ ...prev, borderColor: color }))}
+                                                customColors={customColors}
+                                                onCustomColorAdd={(color) => setCustomColors(prev => [...prev, color])}
+                                                onCustomColorDelete={(color) => setCustomColors(prev => prev.filter(c => c !== color))}
+                                            />
+                                            <Input
+                                                label="Border Width (px)"
+                                                type="number"
+                                                min="0"
+                                                size="sm"
+                                                variant="bordered"
+                                                value={columnStyleDraft.borderWidth}
+                                                onValueChange={(value) => setColumnStyleDraft((prev) => ({ ...prev, borderWidth: value }))}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                            size="sm"
+                                            color="primary"
+                                            onPress={() => applyColumnStyle(columnStyleDraft)}
+                                            isDisabled={columnStyleContext === 'none'}
+                                        >
+                                            Apply
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            variant="flat"
+                                            onPress={handleResetColumnStyle}
+                                            isDisabled={columnStyleContext === 'none'}
+                                        >
+                                            Reset
+                                        </Button>
+                                    </div>
+                                    <div className="text-[11px] text-default-400">Use Reset to clear colors.</div>
                                 </div>
-                                <Input
-                                    label="Background"
-                                    placeholder="rgba(0,0,0,0.2)"
-                                    size="sm"
-                                    variant="bordered"
-                                    value={columnStyleDraft.backgroundColor}
-                                    onValueChange={(value) => setColumnStyleDraft((prev) => ({ ...prev, backgroundColor: value }))}
-                                />
-                                <Input
-                                    label="Border Color"
-                                    placeholder="rgba(255,255,255,0.3)"
-                                    size="sm"
-                                    variant="bordered"
-                                    value={columnStyleDraft.borderColor}
-                                    onValueChange={(value) => setColumnStyleDraft((prev) => ({ ...prev, borderColor: value }))}
-                                />
-                                <Input
-                                    label="Border Width (px)"
-                                    type="number"
-                                    min="0"
-                                    size="sm"
-                                    variant="bordered"
-                                    value={columnStyleDraft.borderWidth}
-                                    onValueChange={(value) => setColumnStyleDraft((prev) => ({ ...prev, borderWidth: value }))}
-                                />
-                                <div className="flex items-center gap-2">
-                                    <Button
-                                        size="sm"
-                                        color="primary"
-                                        onPress={() => applyColumnStyle(columnStyleDraft)}
-                                        isDisabled={columnStyleContext === 'none'}
-                                    >
-                                        Apply
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        variant="flat"
-                                        onPress={handleResetColumnStyle}
-                                        isDisabled={columnStyleContext === 'none'}
-                                    >
-                                        Reset
-                                    </Button>
-                                </div>
-                                <div className="text-[11px] text-default-400">Supports rgba(), #RRGGBBAA, and transparent.</div>
                             </div>
                         </PopoverContent>
                     </Popover>
