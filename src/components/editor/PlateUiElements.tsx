@@ -1,7 +1,4 @@
 import React from 'react';
-import type { PlateEditor } from 'platejs/react';
-import { Path } from 'slate';
-
 // --- Image Element ---
 type ImageElementProps = {
     attributes: React.HTMLAttributes<HTMLDivElement>;
@@ -155,17 +152,42 @@ export const ColumnGroupElement = ({ attributes, children, element }: ColumnGrou
 type ColumnElementProps = {
     attributes: React.HTMLAttributes<HTMLDivElement>;
     children: React.ReactNode;
+    element?: {
+        columnBackgroundColor?: string;
+        columnBorderColor?: string;
+        columnBorderWidth?: number | string;
+    };
 };
 
-export const ColumnElement = ({ attributes, children }: ColumnElementProps) => (
-    <div
-        {...attributes}
-        className={[
-            'column',
-            'min-w-0 border border-white/5 rounded-lg p-2 bg-white/5',
-            attributes.className,
-        ].filter(Boolean).join(' ')}
-    >
-        {children}
-    </div>
-);
+export const ColumnElement = ({ attributes, children, element }: ColumnElementProps) => {
+    const rawBackground = typeof element?.columnBackgroundColor === 'string' ? element.columnBackgroundColor.trim() : '';
+    const rawBorderColor = typeof element?.columnBorderColor === 'string' ? element.columnBorderColor.trim() : '';
+    const rawBorderWidth = element?.columnBorderWidth;
+    const parsedBorderWidth = typeof rawBorderWidth === 'number'
+        ? rawBorderWidth
+        : typeof rawBorderWidth === 'string' && rawBorderWidth.trim()
+            ? Number(rawBorderWidth)
+            : null;
+
+    const style: React.CSSProperties = {
+        ...(attributes.style || {}),
+        ...(rawBackground ? { backgroundColor: rawBackground } : {}),
+        ...(rawBorderColor ? { borderColor: rawBorderColor } : {}),
+        ...(Number.isFinite(parsedBorderWidth) ? { borderWidth: `${parsedBorderWidth}px` } : {}),
+        ...(Number.isFinite(parsedBorderWidth) || rawBorderColor ? { borderStyle: 'solid' } : {}),
+    };
+
+    return (
+        <div
+            {...attributes}
+            style={style}
+            className={[
+                'column',
+                'min-w-0 border border-white/5 rounded-lg p-2 bg-white/5',
+                attributes.className,
+            ].filter(Boolean).join(' ')}
+        >
+            {children}
+        </div>
+    );
+};

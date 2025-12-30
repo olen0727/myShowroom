@@ -38,6 +38,7 @@ import {
     Link as LinkIcon,
     MessageSquare,
     Type,
+    SlidersHorizontal,
     Table2,
     Trash2,
     Columns,
@@ -46,7 +47,7 @@ import {
 import { toast } from 'sonner';
 import Image from 'next/image';
 import { STYLE_KEYS, NODES, type Value } from 'platejs';
-import { Editor, Transforms } from 'slate';
+import { Editor, Element, Transforms } from 'slate';
 import type { Range } from 'platejs';
 import {
     Plate,
@@ -135,6 +136,12 @@ const renderLeaf = ({ attributes, children, leaf }: {
     return <span {...attributes} style={style}>{children}</span>;
 };
 
+const EMPTY_COLUMN_STYLE = {
+    backgroundColor: '',
+    borderColor: '',
+    borderWidth: '',
+};
+
 const StyledBlocksPlugin = BasicBlocksPlugin
     .extendPlugin({ key: NODES.h1 }, { node: { props: { className: 'text-2xl font-semibold text-white' } } })
     .extendPlugin({ key: NODES.h2 }, { node: { props: { className: 'text-xl font-semibold text-white' } } })
@@ -183,6 +190,9 @@ export default function ProjectEditor({ initialProject, onSave, onCancel, standa
     const [uploading, setUploading] = useState(false);
     const [contentUploading, setContentUploading] = useState(false);
     const [customColors, setCustomColors] = useState<string[]>([]);
+    const [columnStyleDraft, setColumnStyleDraft] = useState(EMPTY_COLUMN_STYLE);
+    const [columnStyleContext, setColumnStyleContext] = useState<'none' | 'column' | 'group'>('none');
+    const [isColumnStyleOpen, setIsColumnStyleOpen] = useState(false);
 
     // Slash command state (kept minimal for now)
     const [slashState, setSlashState] = useState<SlashState>({ open: false, range: null, query: '' });
@@ -297,6 +307,91 @@ export default function ProjectEditor({ initialProject, onSave, onCancel, standa
     ]), [autoformatRules, handleContentImageUpload, tablePastePlugin]);
 
     const editor = usePlateEditor({ plugins, value: project.content as Value }, [editorId]);
+
+    const getColumnTargets = useCallback(() => {
+        if (!editor?.selection) return null;
+        const columnEntry = Editor.above(editor, {
+            at: editor.selection,
+            match: (node) => Element.isElement(node) && node.type === NODES.column,
+        }) as any;
+        if (!columnEntry) return null;
+        const groupEntry = Editor.above(editor, {
+            at: editor.selection,
+            match: (node) => Element.isElement(node) && node.type === NODES.columnGroup,
+        }) as any;
+        return { columnEntry, groupEntry };
+    }, [editor]);
+
+    const syncColumnStyleDraft = useCallback(() => {
+        const targets = getColumnTargets();
+        if (!targets?.columnEntry) {
+            setColumnStyleDraft(EMPTY_COLUMN_STYLE);
+            setColumnStyleContext('none');
+            return;
+        }
+
+        const [node] = targets.columnEntry as any;
+        const rawBorderWidth = node?.columnBorderWidth;
+        const parsedBorderWidth = typeof rawBorderWidth === 'number'
+            ? rawBorderWidth
+            : typeof rawBorderWidth === 'string' && rawBorderWidth.trim()
+                ? Number(rawBorderWidth)
+                : null;
+
+        setColumnStyleDraft({
+            backgroundColor: typeof node?.columnBackgroundColor === 'string' ? node.columnBackgroundColor : '',
+            borderColor: typeof node?.columnBorderColor === 'string' ? node.columnBorderColor : '',
+            borderWidth: Number.isFinite(parsedBorderWidth) ? String(parsedBorderWidth) : '',
+        });
+        setColumnStyleContext(targets.groupEntry ? 'group' : 'column');
+    }, [getColumnTargets]);
+
+    useEffect(() => {
+        if (isColumnStyleOpen) {
+            syncColumnStyleDraft();
+        }
+    }, [isColumnStyleOpen, syncColumnStyleDraft]);
+
+    const applyColumnStyle = useCallback((draft: typeof EMPTY_COLUMN_STYLE) => {
+        if (!editor) return;
+        const targets = getColumnTargets();
+        if (!targets?.columnEntry) {
+            toast.error('Place the cursor inside a column to update its style.');
+            return;
+        }
+
+        const backgroundColor = draft.backgroundColor.trim();
+        const borderColor = draft.borderColor.trim();
+        const borderWidthValue = draft.borderWidth.trim();
+        const borderWidth = borderWidthValue === '' ? null : Number(borderWidthValue);
+        const props: Record<string, unknown> = {};
+        const unset: string[] = [];
+
+        if (backgroundColor) props.columnBackgroundColor = backgroundColor;
+        else unset.push('columnBackgroundColor');
+
+        if (borderColor) props.columnBorderColor = borderColor;
+        else unset.push('columnBorderColor');
+
+        if (borderWidthValue !== '' && Number.isFinite(borderWidth)) props.columnBorderWidth = borderWidth;
+        else unset.push('columnBorderWidth');
+
+        const options = targets.groupEntry
+            ? { at: targets.groupEntry[1], match: (node: any) => Element.isElement(node) && node.type === NODES.column }
+            : { at: targets.columnEntry[1] };
+
+        if (Object.keys(props).length > 0) {
+            Transforms.setNodes(editor, props as any, options as any);
+        }
+        if (unset.length > 0) {
+            Transforms.unsetNodes(editor, unset as any, options as any);
+        }
+    }, [editor, getColumnTargets]);
+
+    const handleResetColumnStyle = useCallback(() => {
+        setColumnStyleDraft(EMPTY_COLUMN_STYLE);
+        applyColumnStyle(EMPTY_COLUMN_STYLE);
+    }, [applyColumnStyle]);
 
     const handleEditorChange = useCallback(({ value }: { value: Value }) => {
         setProject(prev => ({ ...prev, content: value }));
@@ -692,6 +787,69 @@ export default function ProjectEditor({ initialProject, onSave, onCancel, standa
                             ]
                         } as any);
                     }}><Columns3 size={16} /></Button></Tooltip>
+                    <Popover placement="bottom" isOpen={isColumnStyleOpen} onOpenChange={setIsColumnStyleOpen}>
+                        <PopoverTrigger>
+                            <Button isIconOnly size="sm" variant="flat" aria-label="Column style">
+                                <SlidersHorizontal size={16} />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent>
+                            <div className="w-64 space-y-3 p-3">
+                                <div className="text-xs font-semibold text-default-500">Column Style</div>
+                                <div className="text-[11px] text-default-400">
+                                    {columnStyleContext === 'none'
+                                        ? 'Place the cursor inside a column to edit.'
+                                        : columnStyleContext === 'group'
+                                            ? 'Applies to all columns in this layout.'
+                                            : 'Applies to the selected column.'}
+                                </div>
+                                <Input
+                                    label="Background"
+                                    placeholder="rgba(0,0,0,0.2)"
+                                    size="sm"
+                                    variant="bordered"
+                                    value={columnStyleDraft.backgroundColor}
+                                    onValueChange={(value) => setColumnStyleDraft((prev) => ({ ...prev, backgroundColor: value }))}
+                                />
+                                <Input
+                                    label="Border Color"
+                                    placeholder="rgba(255,255,255,0.3)"
+                                    size="sm"
+                                    variant="bordered"
+                                    value={columnStyleDraft.borderColor}
+                                    onValueChange={(value) => setColumnStyleDraft((prev) => ({ ...prev, borderColor: value }))}
+                                />
+                                <Input
+                                    label="Border Width (px)"
+                                    type="number"
+                                    min="0"
+                                    size="sm"
+                                    variant="bordered"
+                                    value={columnStyleDraft.borderWidth}
+                                    onValueChange={(value) => setColumnStyleDraft((prev) => ({ ...prev, borderWidth: value }))}
+                                />
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        size="sm"
+                                        color="primary"
+                                        onPress={() => applyColumnStyle(columnStyleDraft)}
+                                        isDisabled={columnStyleContext === 'none'}
+                                    >
+                                        Apply
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="flat"
+                                        onPress={handleResetColumnStyle}
+                                        isDisabled={columnStyleContext === 'none'}
+                                    >
+                                        Reset
+                                    </Button>
+                                </div>
+                                <div className="text-[11px] text-default-400">Supports rgba(), #RRGGBBAA, and transparent.</div>
+                            </div>
+                        </PopoverContent>
+                    </Popover>
                     <Tooltip content="Divider"><Button isIconOnly size="sm" variant="flat" onPress={insertDivider}><Minus size={16} /></Button></Tooltip>
                     <Tooltip content="Table"><Button isIconOnly size="sm" variant="flat" onPress={() => {
                         Transforms.insertNodes(editor as any, {
