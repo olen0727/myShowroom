@@ -10,7 +10,6 @@ import {
     Select,
     SelectItem,
     Tooltip,
-    Chip,
     Popover,
     PopoverTrigger,
     PopoverContent,
@@ -41,14 +40,13 @@ import {
     Type,
     Table2,
     Trash2,
-    GripVertical,
     Columns,
     Columns3
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Image from 'next/image';
-import { RangeApi, STYLE_KEYS, NODES, type Value } from 'platejs';
-import { Editor, Path, Transforms } from 'slate';
+import { STYLE_KEYS, NODES, type Value } from 'platejs';
+import { Editor, Transforms } from 'slate';
 import type { Range } from 'platejs';
 import {
     Plate,
@@ -59,7 +57,7 @@ import {
     type PlateEditor,
 } from 'platejs/react';
 import { BasicBlocksPlugin, BasicMarksPlugin } from '@platejs/basic-nodes/react';
-import { indentList, outdentList, someList, toggleList, ListStyleType } from '@platejs/list';
+import { toggleList, ListStyleType } from '@platejs/list';
 import { ListPlugin } from '@platejs/list/react';
 import { upsertLink } from '@platejs/link';
 import { LinkPlugin } from '@platejs/link/react';
@@ -69,7 +67,6 @@ import { ImagePlugin } from '@platejs/media/react';
 
 import { ColumnPlugin, ColumnItemPlugin } from '@platejs/layout/react';
 import { AutoformatPlugin } from '@platejs/autoformat';
-import { getRangeBoundingClientRect } from '@platejs/floating';
 import {
     DndContext,
     closestCenter,
@@ -82,22 +79,18 @@ import {
 import {
     SortableContext,
     sortableKeyboardCoordinates,
-    useSortable,
     rectSortingStrategy,
     arrayMove
 } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import { Project } from '@/types';
 import {
     normalizeHexColor,
     dataUrlToBlob,
     hashTag,
     getContrastColor,
-    preventMouseDown,
     parseMarkdownTable
 } from '@/lib/utils';
 import { TAG_COLORS_TABLE, DEFAULT_TAG_COLORS } from '@/lib/constants';
-import { BlockDragWrapper } from '@/components/editor/BlockDragWrapper';
 import {
     ImageElement,
     CodeBlockElement,
@@ -196,7 +189,6 @@ export default function ProjectEditor({ initialProject, onSave, onCancel, standa
 
     // Refs
     const editorId = useMemo(() => project.id || 'new-project-editor', [project.id]);
-    const dragPathRef = useRef<Path | null>(null);
     const contentImageInputRef = useRef<HTMLInputElement>(null);
     const toolbarRef = useRef<HTMLDivElement>(null);
     const toolbarPlaceholderRef = useRef<HTMLDivElement>(null);
@@ -265,13 +257,6 @@ export default function ProjectEditor({ initialProject, onSave, onCancel, standa
         { mode: 'block', match: '---', trigger: ' ', format: (editor: PlateEditor) => Transforms.insertNodes(editor as any, { type: NODES.hr, children: [{ text: '' }] } as any) },
     ]), []);
 
-    const blockDragPlugin = useMemo(() => createPlatePlugin({
-        key: 'blockDrag',
-        render: {
-            aboveNodes: () => (props) => <BlockDragWrapper {...props} dragPathRef={dragPathRef} />,
-        },
-    }), [dragPathRef]);
-
     const tablePastePlugin = useMemo(() => createPlatePlugin({
         key: 'tablePaste',
         handlers: {
@@ -307,10 +292,9 @@ export default function ProjectEditor({ initialProject, onSave, onCancel, standa
         ListPlugin, IndentPlugin, LinkPlugin,
         FontColorPlugin, FontBackgroundColorPlugin,
         ImagePlugin.configure({ options: { uploadImage: handleContentImageUpload } }).withComponent(ImageElement),
-        blockDragPlugin,
         tablePastePlugin,
         toPlatePlugin(AutoformatPlugin, { options: { rules: autoformatRules as any } }), // Cast autoformatRules
-    ]), [autoformatRules, blockDragPlugin, handleContentImageUpload, tablePastePlugin]);
+    ]), [autoformatRules, handleContentImageUpload, tablePastePlugin]);
 
     const editor = usePlateEditor({ plugins, value: project.content as Value }, [editorId]);
 
