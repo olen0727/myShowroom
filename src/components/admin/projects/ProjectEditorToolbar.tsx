@@ -35,8 +35,7 @@ import {
     Underline,
     Italic,
 } from 'lucide-react';
-import { Editor, Element, Transforms } from 'slate';
-import { NODES, STYLE_KEYS } from 'platejs';
+import { ElementApi, NODES, STYLE_KEYS } from 'platejs';
 import type { PlateEditor } from 'platejs/react';
 import { toggleList, ListStyleType } from '@platejs/list';
 import { indent, outdent } from '@platejs/indent';
@@ -135,14 +134,14 @@ export function ProjectEditorToolbar({ editor, onOpenImagePicker }: ProjectEdito
 
     const getColumnTargets = useCallback(() => {
         if (!editor?.selection) return null;
-        const columnEntry = Editor.above(editor, {
+        const columnEntry = editor.api.above({
             at: editor.selection,
-            match: (node) => Element.isElement(node) && node.type === NODES.column,
+            match: (node) => ElementApi.isElement(node) && node.type === NODES.column,
         }) as any;
         if (!columnEntry) return null;
-        const groupEntry = Editor.above(editor, {
+        const groupEntry = editor.api.above({
             at: editor.selection,
-            match: (node) => Element.isElement(node) && node.type === NODES.columnGroup,
+            match: (node) => ElementApi.isElement(node) && node.type === NODES.columnGroup,
         }) as any;
         return { columnEntry, groupEntry };
     }, [editor]);
@@ -202,14 +201,14 @@ export function ProjectEditorToolbar({ editor, onOpenImagePicker }: ProjectEdito
         else unset.push('columnBorderWidth');
 
         const options = targets.groupEntry
-            ? { at: targets.groupEntry[1], match: (node: any) => Element.isElement(node) && node.type === NODES.column }
+            ? { at: targets.groupEntry[1], match: (node: any) => ElementApi.isElement(node) && node.type === NODES.column }
             : { at: targets.columnEntry[1] };
 
         if (Object.keys(props).length > 0) {
-            Transforms.setNodes(editor, props as any, options as any);
+            editor.tf.setNodes(props as any, options as any);
         }
         if (unset.length > 0) {
-            Transforms.unsetNodes(editor, unset as any, options as any);
+            editor.tf.unsetNodes(unset as any, options as any);
         }
     }, [editor, getColumnTargets]);
 
@@ -220,12 +219,12 @@ export function ProjectEditorToolbar({ editor, onOpenImagePicker }: ProjectEdito
 
     const setBlockType = useCallback((type: string) => {
         if (!editor) return;
-        Transforms.setNodes(editor as any, { type } as any);
+        editor.tf.setNodes({ type } as any);
     }, [editor]);
 
     const toggleMark = useCallback((type: string) => {
         if (!editor) return;
-        const marks = Editor.marks(editor as any) as Record<string, any> | null;
+        const marks = editor.api.marks() as Record<string, any> | null;
         if (marks?.[type]) {
             (editor as any).removeMark(type);
         } else {
@@ -235,7 +234,7 @@ export function ProjectEditorToolbar({ editor, onOpenImagePicker }: ProjectEdito
 
     const insertDivider = useCallback(() => {
         if (!editor) return;
-        Transforms.insertNodes(editor as any, {
+        editor.tf.insertNodes({
             type: NODES.hr,
             children: [{ text: '' }]
         } as any);
@@ -318,7 +317,7 @@ export function ProjectEditorToolbar({ editor, onOpenImagePicker }: ProjectEdito
             <Tooltip content="Link"><Button isIconOnly size="sm" variant="flat" onPress={handleInsertLink}><LinkIcon size={16} /></Button></Tooltip>
             <Tooltip content="Image"><Button isIconOnly size="sm" variant="flat" onPress={onOpenImagePicker}><ImagePlus size={16} /></Button></Tooltip>
             <Tooltip content="Two Columns"><Button isIconOnly size="sm" variant="flat" onPress={() => {
-                Transforms.insertNodes(editor as any, {
+                editor.tf.insertNodes({
                     type: 'column_group',
                     children: [
                         { type: 'column', children: [{ type: NODES.p, children: [{ text: 'Left column' }] }] },
@@ -327,7 +326,7 @@ export function ProjectEditorToolbar({ editor, onOpenImagePicker }: ProjectEdito
                 } as any);
             }}><Columns size={16} /></Button></Tooltip>
             <Tooltip content="Three Columns"><Button isIconOnly size="sm" variant="flat" onPress={() => {
-                Transforms.insertNodes(editor as any, {
+                editor.tf.insertNodes({
                     type: 'column_group',
                     children: [
                         { type: 'column', children: [{ type: NODES.p, children: [{ text: 'Column 1' }] }] },
@@ -404,7 +403,7 @@ export function ProjectEditorToolbar({ editor, onOpenImagePicker }: ProjectEdito
             </Popover>
             <Tooltip content="Divider"><Button isIconOnly size="sm" variant="flat" onPress={insertDivider}><Minus size={16} /></Button></Tooltip>
             <Tooltip content="Table"><Button isIconOnly size="sm" variant="flat" onPress={() => {
-                Transforms.insertNodes(editor as any, {
+                editor.tf.insertNodes({
                     type: NODES.table,
                     children: [
                         { type: NODES.tr, children: [{ type: NODES.td, children: [{ text: '' }] }, { type: NODES.td, children: [{ text: '' }] }] },
