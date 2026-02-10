@@ -52,7 +52,7 @@ export default function ProjectCarousel() {
 
     return (
         <div className={styles.carouselContainer}>
-            <h2 className={styles.carouselTitle}>個人作品</h2>
+            <h2 className={styles.carouselTitle}>其他專案</h2>
 
             <Swiper
                 effect={'coverflow'}
